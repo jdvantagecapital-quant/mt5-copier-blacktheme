@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block title %}License Info - JD MT5 Trade Copier{% endblock %}
+
+{% block page_title %}License Information{% endblock %}
+
+{% block content %}
+<div class="card mb-4">
+    <div class="card-header">
+        <h3 class="card-title"><i class="fas fa-shield-alt me-2"></i>License Details</h3>
+    </div>
+    <div class="card-body">
+        {% if license %}
+        <div class="row">
+            <div class="col-md-6">
+                <div class="license-info-item">
+                    <label>Licensed To:</label>
+                    <span class="value">{{ license.client_name }}</span>
+                </div>
+                <div class="license-info-item">
+                    <label>License ID:</label>
+                    <span class="value mono">{{ license.license_id }}</span>
+                </div>
+                <div class="license-info-item">
+                    <label>Version:</label>
+                    <span class="value">{{ license.version }}</span>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="license-info-item">
+                    <label>Expiry Date:</label>
+                    <span class="value {% if license.days_remaining <= 7 %}text-warning{% endif %}">
+                        {{ license.expiry_date }}
+                        {% if license.days_remaining %}
+                            <small>({{ license.days_remaining }} days remaining)</small>
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="license-info-item">
+                    <label>Max Copy Pairs:</label>
+                    <span class="value">{{ license.max_pairs }}</span>
+                </div>
+                <div class="license-info-item">
+                    <label>Max Children per Pair:</label>
+                    <span class="value">{{ license.max_children }}</span>
+                </div>
+                <div class="license-info-item">
+                    <label>HWID Binding:</label>
+                    <span class="value">
+                        {% if license.hwid_binding %}
+                            <span class="badge bg-warning text-dark">{{ license.hwid_binding }}</span>
+                        {% else %}
+                            <span class="badge bg-success">Not bound (any PC)</span>
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+        </div>
+        
+        <hr class="my-4">
+        
+        <h4 class="mb-3">Features</h4>
+        <div class="features-grid">
+            {% if license.features %}
+                {% for feature, enabled in license.features.items() %}
+                <div class="feature-item {% if enabled %}enabled{% endif %}">
+                    <i class="fas {% if enabled %}fa-check-circle text-success{% else %}fa-times-circle text-muted{% endif %}"></i>
+                    <span>{{ feature|replace('_', ' ')|title }}</span>
+                </div>
+                {% endfor %}
+            {% endif %}
+        </div>
+        {% else %}
+        <div class="alert alert-warning">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            No license information available.
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.license-info-item {
+    margin-bottom: 16px;
+}
+.license-info-item label {
+    display: block;
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+}
+.license-info-item .value {
+    font-size: 16px;
+    color: var(--text-primary);
+}
+.license-info-item .value.mono {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+}
+.license-info-item .value small {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+.features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+}
+.feature-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+}
+.feature-item i {
+    font-size: 16px;
+}
+.feature-item span {
+    font-size: 13px;
+}
+</style>
+{% endblock %}

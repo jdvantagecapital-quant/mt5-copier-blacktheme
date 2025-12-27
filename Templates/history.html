@@ -1,0 +1,467 @@
+{% extends "base.html" %}
+{% block title %}History - MT5 Trade Copier{% endblock %}
+{% block page_title %}<i class="fas fa-history"></i> Trade History{% endblock %}
+
+{% block extra_css %}
+<style>
+    .history-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 25px; flex-wrap: wrap; gap: 15px; }
+    .history-title { font-size: 16px; color: var(--text-secondary); }
+    .history-actions { display: flex; gap: 10px; }
+    
+    .filters-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin-bottom: 25px; }
+    .filters-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; cursor: pointer; }
+    .filters-title { font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+    .filters-title i { color: var(--accent); }
+    .filters-toggle { color: var(--text-muted); transition: transform var(--transition); }
+    .filters-header.collapsed .filters-toggle { transform: rotate(-180deg); }
+    .filters-body { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
+    .filters-body.collapsed { display: none; }
+    .filter-group { display: flex; flex-direction: column; gap: 8px; }
+    .filter-label { font-size: 13px; font-weight: 500; color: var(--text-secondary); }
+    .filter-select, .filter-input { padding: 10px 14px; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-size: 13px; transition: all var(--transition); }
+    .filter-select:focus, .filter-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+    .filter-actions { display: flex; gap: 10px; align-items: flex-end; }
+    
+    .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 25px; }
+    .mini-stat { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; display: flex; align-items: center; gap: 15px; transition: all var(--transition); }
+    .mini-stat:hover { border-color: var(--border-hover); transform: translateY(-2px); }
+    .mini-stat-icon { width: 45px; height: 45px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+    .mini-stat-icon.trades { background: rgba(59, 130, 246, 0.15); color: var(--accent); }
+    .mini-stat-icon.profit { background: rgba(16, 185, 129, 0.15); color: var(--success); }
+    .mini-stat-icon.loss { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
+    .mini-stat-icon.volume { background: rgba(139, 92, 246, 0.15); color: var(--purple); }
+    .mini-stat-content .value { font-size: 22px; font-weight: 700; }
+    .mini-stat-content .label { font-size: 12px; color: var(--text-muted); }
+    
+    .history-table-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
+    .table-header { padding: 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+    .table-title { font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+    .table-title i { color: var(--cyan); }
+    .table-count { padding: 4px 12px; background: var(--accent); color: white; border-radius: 20px; font-size: 12px; font-weight: 600; }
+    .table-actions { display: flex; gap: 8px; }
+    .table-action-btn { padding: 8px 14px; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 8px; color: var(--text-secondary); font-size: 13px; cursor: pointer; transition: all var(--transition); display: flex; align-items: center; gap: 6px; }
+    .table-action-btn:hover { background: var(--bg-hover); color: var(--text-primary); border-color: var(--border-hover); }
+    
+    .table-container { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th { padding: 14px 20px; text-align: left; font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; background: var(--bg-primary); border-bottom: 1px solid var(--border); white-space: nowrap; position: sticky; top: 0; }
+    td { padding: 16px 20px; border-bottom: 1px solid var(--border); font-size: 13px; vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover { background: rgba(59, 130, 246, 0.03); }
+    
+    .trade-type { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+    .trade-type.buy { background: rgba(16, 185, 129, 0.15); color: var(--success); }
+    .trade-type.sell { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
+    .trade-type.modify { background: rgba(245, 158, 11, 0.15); color: var(--warning); }
+    .trade-type.close { background: rgba(139, 92, 246, 0.15); color: var(--purple); }
+    
+    .symbol-badge { display: inline-flex; align-items: center; gap: 6px; font-weight: 500; }
+    .symbol-badge i { color: var(--accent); font-size: 14px; }
+    
+    .profit-value { font-weight: 600; font-family: 'JetBrains Mono', monospace; }
+    .profit-value.positive { color: var(--success); }
+    .profit-value.negative { color: var(--danger); }
+    
+    .account-info { display: flex; flex-direction: column; gap: 2px; }
+    .account-info .primary { font-weight: 500; }
+    .account-info .secondary { font-size: 11px; color: var(--text-muted); }
+    
+    .status-badge { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 500; }
+    .status-badge.success { background: rgba(16, 185, 129, 0.15); color: var(--success); }
+    .status-badge.failed { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
+    .status-badge.pending { background: rgba(245, 158, 11, 0.15); color: var(--warning); }
+    
+    .details-btn { padding: 6px 12px; background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 6px; color: var(--accent); font-size: 12px; cursor: pointer; transition: all var(--transition); }
+    .details-btn:hover { background: var(--accent); color: white; }
+    
+    .pagination { padding: 20px; border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+    .pagination-info { font-size: 13px; color: var(--text-muted); }
+    .pagination-btns { display: flex; gap: 5px; }
+    .page-btn { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 8px; color: var(--text-secondary); font-size: 13px; cursor: pointer; transition: all var(--transition); }
+    .page-btn:hover:not(:disabled) { background: var(--bg-hover); color: var(--text-primary); }
+    .page-btn.active { background: var(--accent); border-color: var(--accent); color: white; }
+    .page-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    
+    .empty-table { padding: 60px 20px; text-align: center; }
+    .empty-table i { font-size: 50px; color: var(--text-muted); opacity: 0.3; margin-bottom: 20px; }
+    .empty-table h3 { font-size: 18px; margin-bottom: 8px; }
+    .empty-table p { color: var(--text-secondary); font-size: 14px; }
+    
+    .log-level { padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+    .log-level.debug { background: rgba(100, 116, 139, 0.2); color: #94a3b8; }
+    .log-level.info { background: rgba(59, 130, 246, 0.2); color: var(--accent); }
+    .log-level.warning { background: rgba(245, 158, 11, 0.2); color: var(--warning); }
+    .log-level.error { background: rgba(239, 68, 68, 0.2); color: var(--danger); }
+    .log-level.trade { background: rgba(16, 185, 129, 0.2); color: var(--success); }
+    
+    .expand-row { cursor: pointer; }
+    .expand-row td:first-child::before { content: '\f054'; font-family: 'Font Awesome 6 Free'; font-weight: 900; margin-right: 10px; font-size: 10px; color: var(--text-muted); transition: transform var(--transition); display: inline-block; }
+    .expand-row.expanded td:first-child::before { transform: rotate(90deg); }
+    .detail-row { display: none; }
+    .detail-row.show { display: table-row; }
+    .detail-row td { padding: 0; background: var(--bg-primary); }
+    .detail-content { padding: 20px; }
+    .detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; }
+    .detail-item { display: flex; flex-direction: column; gap: 5px; }
+    .detail-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    .detail-value { font-size: 14px; font-weight: 500; font-family: 'JetBrains Mono', monospace; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="history-header">
+    <div class="history-title">View and filter all trade history, errors, and system events</div>
+    <div class="history-actions">
+        <button class="btn btn-secondary btn-sm" onclick="exportHistory()"><i class="fas fa-download"></i> Export CSV</button>
+        <button class="btn btn-primary btn-sm" onclick="refreshHistory()"><i class="fas fa-sync-alt"></i> Refresh</button>
+    </div>
+</div>
+
+<div class="filters-card">
+    <div class="filters-header" onclick="toggleFilters()">
+        <h3 class="filters-title"><i class="fas fa-filter"></i> Advanced Filters</h3>
+        <i class="fas fa-chevron-up filters-toggle"></i>
+    </div>
+    <div class="filters-body" id="filtersBody">
+        <div class="filter-group">
+            <label class="filter-label">Log Type</label>
+            <select class="filter-select" id="filterType">
+                <option value="">All Types</option>
+                <option value="trade">Trade Opened</option>
+                <option value="close">Trade Closed</option>
+                <option value="modify">Trade Modified</option>
+                <option value="error">Errors</option>
+                <option value="warning">Warnings</option>
+                <option value="info">Info</option>
+                <option value="debug">Debug</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label class="filter-label">Pair</label>
+            <select class="filter-select" id="filterPair">
+                <option value="">All Pairs</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label class="filter-label">Account</label>
+            <select class="filter-select" id="filterAccount">
+                <option value="">All Accounts</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label class="filter-label">Symbol</label>
+            <input type="text" class="filter-input" id="filterSymbol" placeholder="e.g., EURUSD">
+        </div>
+        <div class="filter-group">
+            <label class="filter-label">Date From</label>
+            <input type="date" class="filter-input" id="filterDateFrom">
+        </div>
+        <div class="filter-group">
+            <label class="filter-label">Date To</label>
+            <input type="date" class="filter-input" id="filterDateTo">
+        </div>
+        <div class="filter-group">
+            <label class="filter-label">Search</label>
+            <input type="text" class="filter-input" id="filterSearch" placeholder="Search messages...">
+        </div>
+        <div class="filter-actions">
+            <button class="btn btn-primary btn-sm" onclick="applyFilters()"><i class="fas fa-search"></i> Apply</button>
+            <button class="btn btn-secondary btn-sm" onclick="clearFilters()"><i class="fas fa-times"></i> Clear</button>
+        </div>
+    </div>
+</div>
+
+<div class="stats-row">
+    <div class="mini-stat">
+        <div class="mini-stat-icon trades"><i class="fas fa-exchange-alt"></i></div>
+        <div class="mini-stat-content">
+            <div class="value" id="statTotalTrades">0</div>
+            <div class="label">Total Events</div>
+        </div>
+    </div>
+    <div class="mini-stat">
+        <div class="mini-stat-icon profit"><i class="fas fa-arrow-trend-up"></i></div>
+        <div class="mini-stat-content">
+            <div class="value" id="statSuccessful">0</div>
+            <div class="label">Successful</div>
+        </div>
+    </div>
+    <div class="mini-stat">
+        <div class="mini-stat-icon loss"><i class="fas fa-exclamation-triangle"></i></div>
+        <div class="mini-stat-content">
+            <div class="value" id="statErrors">0</div>
+            <div class="label">Errors</div>
+        </div>
+    </div>
+    <div class="mini-stat">
+        <div class="mini-stat-icon volume"><i class="fas fa-clock"></i></div>
+        <div class="mini-stat-content">
+            <div class="value" id="statToday">0</div>
+            <div class="label">Today</div>
+        </div>
+    </div>
+</div>
+
+<div class="history-table-card">
+    <div class="table-header">
+        <div class="table-title">
+            <i class="fas fa-list"></i> Event Log
+            <span class="table-count" id="tableCount">0</span>
+        </div>
+        <div class="table-actions">
+            <button class="table-action-btn" onclick="toggleAutoRefresh()"><i class="fas fa-sync-alt" id="autoRefreshIcon"></i> Auto-refresh</button>
+        </div>
+    </div>
+    <div class="table-container">
+        <table id="historyTable">
+            <thead>
+                <tr>
+                    <th>Timestamp</th>
+                    <th>Level</th>
+                    <th>Type</th>
+                    <th>Pair</th>
+                    <th>Account</th>
+                    <th>Symbol</th>
+                    <th>Message</th>
+                    <th>Details</th>
+                </tr>
+            </thead>
+            <tbody id="historyBody">
+                <tr class="empty-table-row">
+                    <td colspan="8">
+                        <div class="empty-table">
+                            <i class="fas fa-inbox"></i>
+                            <h3>No history records</h3>
+                            <p>Trade history and events will appear here</p>
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <div class="pagination">
+        <div class="pagination-info">Showing <span id="showingFrom">0</span>-<span id="showingTo">0</span> of <span id="totalRecords">0</span></div>
+        <div class="pagination-btns" id="paginationBtns"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let allLogs = [];
+let filteredLogs = [];
+let currentPage = 1;
+const perPage = 25;
+let autoRefresh = false;
+let refreshInterval = null;
+
+async function fetchHistory() {
+    try {
+        const response = await fetch('/api/all-logs?limit=500');
+        const data = await response.json();
+        allLogs = data.logs || [];
+        applyFilters();
+        updateStats();
+    } catch (error) {
+        console.error('Error fetching history:', error);
+        showToast('error', 'Error', 'Failed to fetch history');
+    }
+}
+
+function updateStats() {
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('statTotalTrades').textContent = allLogs.length;
+    document.getElementById('statSuccessful').textContent = allLogs.filter(l => ['trade', 'open', 'close', 'info'].includes(l.type?.toLowerCase())).length;
+    document.getElementById('statErrors').textContent = allLogs.filter(l => l.type?.toLowerCase() === 'error').length;
+    document.getElementById('statToday').textContent = allLogs.filter(l => l.timestamp?.includes(today)).length;
+}
+
+function applyFilters() {
+    const type = document.getElementById('filterType').value.toLowerCase();
+    const pair = document.getElementById('filterPair').value;
+    const account = document.getElementById('filterAccount').value;
+    const symbol = document.getElementById('filterSymbol').value.toLowerCase();
+    const dateFrom = document.getElementById('filterDateFrom').value;
+    const dateTo = document.getElementById('filterDateTo').value;
+    const search = document.getElementById('filterSearch').value.toLowerCase();
+    
+    filteredLogs = allLogs.filter(log => {
+        if (type && log.type?.toLowerCase() !== type) return false;
+        if (pair && log.pair_id?.toString() !== pair) return false;
+        if (account && !log.account?.toString().includes(account)) return false;
+        if (symbol && !log.symbol?.toLowerCase().includes(symbol)) return false;
+        if (dateFrom && log.timestamp < dateFrom) return false;
+        if (dateTo && log.timestamp > dateTo + 'T23:59:59') return false;
+        if (search && !log.message?.toLowerCase().includes(search)) return false;
+        return true;
+    });
+    
+    currentPage = 1;
+    renderTable();
+}
+
+function clearFilters() {
+    document.getElementById('filterType').value = '';
+    document.getElementById('filterPair').value = '';
+    document.getElementById('filterAccount').value = '';
+    document.getElementById('filterSymbol').value = '';
+    document.getElementById('filterDateFrom').value = '';
+    document.getElementById('filterDateTo').value = '';
+    document.getElementById('filterSearch').value = '';
+    applyFilters();
+}
+
+function renderTable() {
+    const tbody = document.getElementById('historyBody');
+    const start = (currentPage - 1) * perPage;
+    const end = start + perPage;
+    const pageData = filteredLogs.slice(start, end);
+    
+    document.getElementById('tableCount').textContent = filteredLogs.length;
+    document.getElementById('showingFrom').textContent = filteredLogs.length ? start + 1 : 0;
+    document.getElementById('showingTo').textContent = Math.min(end, filteredLogs.length);
+    document.getElementById('totalRecords').textContent = filteredLogs.length;
+    
+    if (pageData.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8"><div class="empty-table"><i class="fas fa-inbox"></i><h3>No records found</h3><p>Try adjusting your filters</p></div></td></tr>';
+        document.getElementById('paginationBtns').innerHTML = '';
+        return;
+    }
+    
+    tbody.innerHTML = pageData.map((log, idx) => {
+        const level = log.type?.toLowerCase() || 'info';
+        const levelClass = ['error', 'warning', 'debug', 'info', 'trade'].includes(level) ? level : 'info';
+        return `
+            <tr class="expand-row" onclick="toggleRow(this)">
+                <td><span style="font-family: 'JetBrains Mono', monospace; font-size: 12px;">${log.timestamp || '-'}</span></td>
+                <td><span class="log-level ${levelClass}">${level}</span></td>
+                <td><span class="trade-type ${level}">${log.action || log.type || '-'}</span></td>
+                <td>${log.pair_id ? 'Pair ' + log.pair_id : '-'}</td>
+                <td><div class="account-info"><span class="primary">${log.account || '-'}</span><span class="secondary">${log.account_type || ''}</span></div></td>
+                <td><span class="symbol-badge">${log.symbol ? '<i class="fas fa-chart-line"></i> ' + log.symbol : '-'}</span></td>
+                <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${(log.message || '').replace(/"/g, '&quot;')}">${log.message || '-'}</td>
+                <td><button class="details-btn"><i class="fas fa-eye"></i></button></td>
+            </tr>
+            <tr class="detail-row">
+                <td colspan="8">
+                    <div class="detail-content">
+                        <div class="detail-grid">
+                            <div class="detail-item"><span class="detail-label">Full Message</span><span class="detail-value">${log.message || '-'}</span></div>
+                            <div class="detail-item"><span class="detail-label">Ticket</span><span class="detail-value">${log.ticket || '-'}</span></div>
+                            <div class="detail-item"><span class="detail-label">Volume</span><span class="detail-value">${log.volume || '-'}</span></div>
+                            <div class="detail-item"><span class="detail-label">Price</span><span class="detail-value">${log.price || '-'}</span></div>
+                            <div class="detail-item"><span class="detail-label">SL</span><span class="detail-value">${log.sl || '-'}</span></div>
+                            <div class="detail-item"><span class="detail-label">TP</span><span class="detail-value">${log.tp || '-'}</span></div>
+                            <div class="detail-item"><span class="detail-label">Error Code</span><span class="detail-value">${log.error_code || '-'}</span></div>
+                            <div class="detail-item"><span class="detail-label">Raw Data</span><span class="detail-value" style="word-break: break-all;">${JSON.stringify(log)}</span></div>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+    
+    renderPagination();
+}
+
+function toggleRow(row) {
+    row.classList.toggle('expanded');
+    const detailRow = row.nextElementSibling;
+    if (detailRow && detailRow.classList.contains('detail-row')) {
+        detailRow.classList.toggle('show');
+    }
+}
+
+function renderPagination() {
+    const totalPages = Math.ceil(filteredLogs.length / perPage);
+    const container = document.getElementById('paginationBtns');
+    
+    if (totalPages <= 1) { container.innerHTML = ''; return; }
+    
+    let html = '<button class="page-btn" onclick="goToPage(' + (currentPage - 1) + ')" ' + (currentPage === 1 ? 'disabled' : '') + '><i class="fas fa-chevron-left"></i></button>';
+    
+    for (let i = 1; i <= Math.min(totalPages, 5); i++) {
+        html += '<button class="page-btn ' + (i === currentPage ? 'active' : '') + '" onclick="goToPage(' + i + ')">' + i + '</button>';
+    }
+    
+    if (totalPages > 5) {
+        html += '<button class="page-btn" disabled>...</button>';
+        html += '<button class="page-btn ' + (totalPages === currentPage ? 'active' : '') + '" onclick="goToPage(' + totalPages + ')">' + totalPages + '</button>';
+    }
+    
+    html += '<button class="page-btn" onclick="goToPage(' + (currentPage + 1) + ')" ' + (currentPage === totalPages ? 'disabled' : '') + '><i class="fas fa-chevron-right"></i></button>';
+    
+    container.innerHTML = html;
+}
+
+function goToPage(page) {
+    const totalPages = Math.ceil(filteredLogs.length / perPage);
+    if (page < 1 || page > totalPages) return;
+    currentPage = page;
+    renderTable();
+}
+
+function toggleFilters() {
+    document.querySelector('.filters-header').classList.toggle('collapsed');
+    document.getElementById('filtersBody').classList.toggle('collapsed');
+}
+
+function toggleAutoRefresh() {
+    autoRefresh = !autoRefresh;
+    const icon = document.getElementById('autoRefreshIcon');
+    if (autoRefresh) {
+        icon.classList.add('fa-spin');
+        refreshInterval = setInterval(fetchHistory, 5000);
+        showToast('info', 'Auto-refresh', 'Enabled - refreshing every 5 seconds');
+    } else {
+        icon.classList.remove('fa-spin');
+        clearInterval(refreshInterval);
+        showToast('info', 'Auto-refresh', 'Disabled');
+    }
+}
+
+function refreshHistory() {
+    fetchHistory();
+    showToast('success', 'Refreshed', 'History data updated');
+}
+
+function exportHistory() {
+    if (filteredLogs.length === 0) {
+        showToast('warning', 'No data', 'No records to export');
+        return;
+    }
+    
+    const headers = ['Timestamp', 'Type', 'Pair', 'Account', 'Symbol', 'Message', 'Ticket', 'Volume', 'Price'];
+    const csv = [headers.join(',')];
+    
+    filteredLogs.forEach(log => {
+        csv.push([
+            log.timestamp || '', log.type || '', log.pair_id || '', log.account || '',
+            log.symbol || '', '"' + (log.message || '').replace(/"/g, '""') + '"',
+            log.ticket || '', log.volume || '', log.price || ''
+        ].join(','));
+    });
+    
+    const blob = new Blob([csv.join('\n')], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'trade_history_' + new Date().toISOString().split('T')[0] + '.csv';
+    a.click();
+    showToast('success', 'Exported', 'CSV file downloaded');
+}
+
+async function loadFilterOptions() {
+    try {
+        const response = await fetch('/api/pairs');
+        const data = await response.json();
+        const pairSelect = document.getElementById('filterPair');
+        (data.pairs || []).forEach(p => {
+            pairSelect.innerHTML += '<option value="' + p.id + '">' + (p.name || 'Pair ' + p.id) + '</option>';
+        });
+    } catch (e) { console.error('Error loading filter options:', e); }
+}
+
+loadFilterOptions();
+fetchHistory();
+</script>
+{% endblock %}

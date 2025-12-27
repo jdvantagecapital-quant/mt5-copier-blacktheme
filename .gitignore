@@ -1,0 +1,31 @@
+﻿# Virtual environment
+.venv/
+venv/
+env/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.class
+*.pyc
+
+# Build directories
+build/
+
+# Binary/data files
+*.bin
+
+# Log files
+*.log
+trade_log*.txt
+
+# IDE
+.vscode/
+
+# Sensitive files
+secret.key
+users.json
+
+# OS files
+.DS_Store
+Thumbs.db
