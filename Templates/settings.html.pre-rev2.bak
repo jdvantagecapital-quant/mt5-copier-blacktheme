@@ -1,0 +1,453 @@
+﻿{% extends "base.html" %}
+{% block title %}Settings - Trade Copier{% endblock %}
+{% block page_title %}<i class="fas fa-cog"></i> Settings{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Modern Settings Layout */
+    .settings-container { 
+        display: flex; 
+        gap: 24px; 
+        width: 100%;
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+    
+    /* Enhanced Navigation Sidebar */
+    .settings-nav { 
+        width: 220px;
+        flex-shrink: 0;
+        background: linear-gradient(145deg, #0f0f0f 0%, #0a0a0a 100%); 
+        border: 1px solid rgba(255,255,255,0.1); 
+        border-radius: 12px; 
+        padding: 12px;
+        height: fit-content;
+        position: sticky;
+        top: 100px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05);
+    }
+    
+    .settings-nav .nav-item { 
+        display: flex; 
+        align-items: center; 
+        gap: 12px; 
+        padding: 14px 16px; 
+        border-radius: 8px; 
+        cursor: pointer; 
+        color: var(--text-secondary); 
+        font-size: 12px; 
+        font-weight: 500; 
+        text-transform: uppercase; 
+        letter-spacing: 0.8px;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        margin-bottom: 6px;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .settings-nav .nav-item::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 3px;
+        height: 100%;
+        background: var(--text-primary);
+        transform: scaleY(0);
+        transition: transform 0.3s ease;
+    }
+    
+    .settings-nav .nav-item:hover { 
+        background: rgba(255,255,255,0.05); 
+        color: var(--text-primary);
+        transform: translateX(4px);
+    }
+    
+    .settings-nav .nav-item.active { 
+        background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.08) 100%); 
+        color: var(--text-primary);
+        border: 1px solid rgba(255,255,255,0.2);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.1);
+    }
+    
+    .settings-nav .nav-item.active::before {
+        transform: scaleY(1);
+    }
+    
+    .settings-nav .nav-item i { 
+        font-size: 14px; 
+        width: 20px; 
+        text-align: center;
+        opacity: 0.7;
+    }
+    
+    .settings-nav .nav-item.active i {
+        opacity: 1;
+    }
+    
+    /* Main Panel - Enhanced Design */
+    .settings-main {
+        flex: 1;
+        min-width: 0;
+    }
+    
+    .settings-panel { 
+        background: linear-gradient(145deg, #0f0f0f 0%, #0a0a0a 100%); 
+        border: 1px solid rgba(255,255,255,0.1); 
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05);
+        overflow: hidden;
+    }
+    
+    .panel-header { 
+        padding: 24px 28px; 
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+        background: linear-gradient(135deg, rgba(255,255,255,0.03) 0%, transparent 100%);
+    }
+    
+    .panel-title { 
+        font-size: 16px; 
+        font-weight: 700; 
+        text-transform: uppercase; 
+        letter-spacing: 2px; 
+        margin-bottom: 6px;
+        background: linear-gradient(135deg, #ffffff 0%, #aaaaaa 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    
+    .panel-desc { 
+        font-size: 11px; 
+        color: var(--text-muted);
+        letter-spacing: 0.5px;
+    }
+    
+    .panel-body { 
+        padding: 28px; 
+    }
+    
+    /* Setting Groups */
+    .setting-group { 
+        margin-bottom: 32px; 
+    }
+    
+    .setting-group:last-child { 
+        margin-bottom: 0; 
+    }
+    
+    .group-title { 
+        font-size: 10px; 
+        font-weight: 700; 
+        text-transform: uppercase; 
+        letter-spacing: 2px; 
+        color: var(--text-secondary); 
+        margin-bottom: 20px; 
+        padding-bottom: 12px; 
+        border-bottom: 2px solid rgba(255,255,255,0.1); 
+        display: flex; 
+        align-items: center; 
+        gap: 10px;
+        position: relative;
+    }
+    
+    .group-title::before { 
+        content: ''; 
+        width: 4px; 
+        height: 16px; 
+        background: linear-gradient(180deg, var(--text-primary) 0%, transparent 100%);
+        border-radius: 2px;
+        box-shadow: 0 0 8px rgba(255,255,255,0.3);
+    }
+    
+    /* Setting Rows */
+    .setting-row { 
+        display: flex; 
+        justify-content: space-between; 
+        align-items: center; 
+        padding: 18px 20px; 
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+        background: rgba(255,255,255,0.01);
+        border-radius: 8px;
+        margin-bottom: 8px;
+        transition: all 0.3s ease;
+    }
+    
+    .setting-row:hover {
+        background: rgba(255,255,255,0.03);
+        border-color: rgba(255,255,255,0.1);
+        transform: translateX(4px);
+    }
+    
+    .setting-row:last-child { 
+        border-bottom: none; 
+        margin-bottom: 0;
+    }
+    
+    .setting-label { 
+        font-size: 13px; 
+        font-weight: 600; 
+        margin-bottom: 4px;
+        color: var(--text-primary);
+        letter-spacing: 0.3px;
+    }
+    
+    .setting-desc { 
+        font-size: 11px; 
+        color: var(--text-muted);
+        line-height: 1.4;
+    }
+    
+    /* Enhanced Toggle Switch */
+    .toggle { 
+        position: relative; 
+        width: 52px; 
+        height: 28px; 
+        background: rgba(255,255,255,0.1); 
+        border: 2px solid rgba(255,255,255,0.2); 
+        border-radius: 16px; 
+        cursor: pointer; 
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        flex-shrink: 0;
+        box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
+    }
+    
+    .toggle:hover {
+        border-color: rgba(255,255,255,0.3);
+        box-shadow: 0 0 12px rgba(255,255,255,0.1);
+    }
+    
+    .toggle.active { 
+        background: linear-gradient(135deg, #00ff88 0%, #00c864 100%); 
+        border-color: #00ff88;
+        box-shadow: 0 0 20px rgba(0,255,136,0.4), inset 0 2px 4px rgba(0,0,0,0.2);
+    }
+    
+    .toggle::after { 
+        content: ''; 
+        position: absolute; 
+        top: 3px; 
+        left: 3px; 
+        width: 18px; 
+        height: 18px; 
+        background: linear-gradient(145deg, #ffffff 0%, #cccccc 100%);
+        border-radius: 50%; 
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 2px 6px rgba(0,0,0,0.4), 0 1px 2px rgba(255,255,255,0.3);
+    }
+    
+    .toggle.active::after { 
+        left: 27px; 
+        background: linear-gradient(145deg, #ffffff 0%, #f0f0f0 100%);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3), 0 0 12px rgba(255,255,255,0.5);
+    }
+    
+    /* Form Layout */
+    .form-row { 
+        display: flex; 
+        gap: 16px; 
+        margin-bottom: 16px; 
+    }
+    
+    .form-row .form-group { 
+        flex: 1; 
+        min-width: 0; 
+    }
+    
+    /* Panel Footer */
+    .panel-footer { 
+        padding: 20px 28px; 
+        border-top: 1px solid rgba(255,255,255,0.1); 
+        display: flex; 
+        justify-content: flex-end; 
+        gap: 12px;
+        background: rgba(0,0,0,0.2);
+    }
+    
+    /* About Section */
+    .about-content { 
+        text-align: center; 
+        padding: 60px 28px; 
+    }
+    
+    .about-logo { 
+        width: 80px; 
+        height: 80px; 
+        background: linear-gradient(135deg, #ffffff 0%, #cccccc 100%); 
+        border-radius: 16px; 
+        display: flex; 
+        align-items: center; 
+        justify-content: center; 
+        margin: 0 auto 24px; 
+        font-size: 32px; 
+        color: #000;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.4), 0 0 20px rgba(255,255,255,0.2);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .about-logo::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(135deg, transparent 40%, rgba(255,255,255,0.4) 50%, transparent 60%);
+        animation: shimmer 3s infinite;
+    }
+    
+    @keyframes shimmer {
+        0% { transform: translateX(-100%) rotate(45deg); }
+        100% { transform: translateX(200%) rotate(45deg); }
+    }
+    
+    .about-name { 
+        font-size: 20px; 
+        font-weight: 700; 
+        margin-bottom: 8px; 
+        letter-spacing: 2px;
+        background: linear-gradient(135deg, #ffffff 0%, #aaaaaa 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    
+    .about-version { 
+        color: var(--text-muted); 
+        font-size: 11px; 
+        margin-bottom: 16px; 
+        text-transform: uppercase; 
+        letter-spacing: 2px;
+    }
+    
+    .about-desc { 
+        color: var(--text-secondary); 
+        font-size: 12px; 
+        max-width: 400px; 
+        margin: 0 auto; 
+        line-height: 1.6;
+    }
+    
+    /* Responsive Design */
+    @media (max-width: 768px) { 
+        .settings-container { 
+            flex-direction: column; 
+            gap: 16px;
+        }
+        
+        .settings-nav { 
+            width: 100%; 
+            position: static;
+            display: flex;
+            gap: 8px;
+            padding: 12px;
+        }
+        
+        .settings-nav .nav-item {
+            flex: 1;
+            justify-content: center;
+            margin-bottom: 0;
+        }
+        
+        .panel-body {
+            padding: 20px;
+        }
+        
+        .form-row {
+            flex-direction: column;
+            gap: 12px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="settings-container">
+    <div class="settings-nav">
+        <div class="nav-item active" data-panel="general"><i class="fas fa-sliders-h"></i> General</div>
+        <div class="nav-item" data-panel="copy"><i class="fas fa-copy"></i> Trade Copy</div>
+        <div class="nav-item" data-panel="about"><i class="fas fa-info-circle"></i> About</div>
+    </div>
+    
+    <div class="settings-main">
+        <div class="settings-panel" id="generalPanel">
+            <div class="panel-header"><div class="panel-title">General Settings</div><div class="panel-desc">Application behavior</div></div>
+            <div class="panel-body">
+                <div class="setting-group">
+                    <div class="group-title">Application</div>
+                    <div class="setting-row"><div><div class="setting-label">Auto-start on boot</div><div class="setting-desc">Launch when Windows starts</div></div><div class="toggle" id="autoStart"></div></div>
+                    <div class="setting-row"><div><div class="setting-label">Start minimized</div><div class="setting-desc">Start in system tray</div></div><div class="toggle" id="startMinimized"></div></div>
+                </div>
+                <div class="setting-group">
+                    <div class="group-title">Server</div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Port</label>
+                            <div class="input-wrapper"><i class="fas fa-network-wired input-icon"></i><input type="number" class="form-control" id="serverPort" value="5000"></div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Log Level</label>
+                            <div class="input-wrapper"><i class="fas fa-list-alt input-icon"></i><select class="form-control" id="logLevel"><option value="info">Info</option><option value="debug">Debug</option><option value="error">Error</option></select></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="panel-footer"><button class="btn btn-ghost btn-sm" onclick="resetSettings()">Reset</button><button class="btn btn-primary btn-sm" onclick="saveSettings()">Save</button></div>
+        </div>
+        
+        <div class="settings-panel" id="copyPanel" style="display:none;">
+            <div class="panel-header"><div class="panel-title">Trade Copy Settings</div><div class="panel-desc">Copying behavior</div></div>
+            <div class="panel-body">
+                <div class="setting-group">
+                    <div class="group-title">Execution</div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Slippage (pts)</label>
+                            <div class="input-wrapper"><i class="fas fa-exchange-alt input-icon"></i><input type="number" class="form-control" id="defSlippage" value="10"></div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Delay (ms)</label>
+                            <div class="input-wrapper"><i class="fas fa-clock input-icon"></i><input type="number" class="form-control" id="defDelay" value="0"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="setting-group">
+                    <div class="group-title">Options</div>
+                    <div class="setting-row"><div><div class="setting-label">Copy Stop Loss</div><div class="setting-desc">Copy SL to child</div></div><div class="toggle active" id="copySL"></div></div>
+                    <div class="setting-row"><div><div class="setting-label">Copy Take Profit</div><div class="setting-desc">Copy TP to child</div></div><div class="toggle active" id="copyTP"></div></div>
+                    <div class="setting-row"><div><div class="setting-label">Copy Pending</div><div class="setting-desc">Copy pending orders</div></div><div class="toggle" id="copyPending"></div></div>
+                </div>
+            </div>
+            <div class="panel-footer"><button class="btn btn-primary btn-sm" onclick="saveSettings()">Save</button></div>
+        </div>
+        
+        <div class="settings-panel" id="aboutPanel" style="display:none;">
+            <div class="panel-body">
+                <div class="about-content">
+                    <div class="about-logo"><i class="fas fa-bolt"></i></div>
+                    <div class="about-name">MT5 Trade Copier</div>
+                    <div class="about-version">Version 2.0.0 | Pro</div>
+                    <div class="about-desc">Professional MetaTrader 5 trade copying with real-time sync.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.querySelectorAll('.settings-nav .nav-item').forEach(item => {
+    item.addEventListener('click', function() {
+        document.querySelectorAll('.settings-nav .nav-item').forEach(n => n.classList.remove('active'));
+        this.classList.add('active');
+        document.querySelectorAll('.settings-panel').forEach(p => p.style.display = 'none');
+        const panel = document.getElementById(this.dataset.panel + 'Panel');
+        if (panel) panel.style.display = 'block';
+    });
+});
+document.querySelectorAll('.toggle').forEach(t => t.addEventListener('click', function() { this.classList.toggle('active'); }));
+async function saveSettings() { showToast('success', 'Saved', 'Settings saved'); }
+function resetSettings() { if (confirm('Reset?')) showToast('info', 'Reset', 'Settings reset'); }
+</script>
+{% endblock %}
+
+
