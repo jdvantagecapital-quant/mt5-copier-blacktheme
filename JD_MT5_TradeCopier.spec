@@ -1,4 +1,4 @@
-# -*- mode: python ; coding: utf-8 -*-
+﻿# -*- mode: python ; coding: utf-8 -*-
 """
 PyInstaller Spec File for JD MT5 Trade Copier
 Professional distribution build with license protection
@@ -8,7 +8,7 @@ from PyInstaller.utils.hooks import collect_all, collect_submodules, collect_dat
 import os
 
 # Get the directory where this spec file is located
-SPEC_DIR = r'c:\Users\MI\mt5_copier_web black theme multi'
+SPEC_DIR = os.path.dirname(__file__)
 
 # Collect ALL numpy components
 numpy_datas, numpy_binaries, numpy_hiddenimports = collect_all('numpy')
@@ -95,3 +95,4 @@ exe = EXE(
     icon=None,  # Add icon path here if you have one: icon='icon.ico'
     version=None,  # Can add version info file
 )
+
