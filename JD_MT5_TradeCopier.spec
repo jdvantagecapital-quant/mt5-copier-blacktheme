@@ -8,7 +8,7 @@ from PyInstaller.utils.hooks import collect_all, collect_submodules, collect_dat
 import os
 
 # Get the directory where this spec file is located
-SPEC_DIR = os.path.dirname(__file__)
+SPEC_DIR = r'C:\\Users\\MI\\MT5-Copier-new'
 
 # Collect ALL numpy components
 numpy_datas, numpy_binaries, numpy_hiddenimports = collect_all('numpy')
@@ -95,4 +95,5 @@ exe = EXE(
     icon=None,  # Add icon path here if you have one: icon='icon.ico'
     version=None,  # Can add version info file
 )
+
 
