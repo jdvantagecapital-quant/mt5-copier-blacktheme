@@ -6,9 +6,9 @@
 <style>
         /* Page Header */
     .page-header { display: flex !important; align-items: center !important; margin-bottom: 32px !important; gap: 24px !important; }
-    .page-desc { font-size: 13px !important; color: var(--text-muted) !important; flex-shrink: 0 !important; }
+    .page-desc { font-size: 12px !important; font-weight: 600 !important; color: var(--text-muted) !important; flex-shrink: 0 !important; }
     .header-actions { display: flex !important; gap: 12px !important; margin-left: auto !important; }
-    .header-btn { padding: 8px 16px !important; background: var(--bg-card) !important; color: var(--text-secondary) !important; border: 1px solid var(--border) !important; border-radius: 999px !important; font-size: 12px !important; font-weight: 600 !important; cursor: pointer !important; display: flex !important; align-items: center !important; gap: 10px !important; transition: all 0.2s !important; }
+    .header-btn { padding: 10px 18px !important; background: var(--bg-card) !important; color: var(--text-secondary) !important; border: 1px solid var(--border) !important; border-radius: 999px !important; font-size: 13px !important; font-weight: 600 !important; cursor: pointer !important; display: flex !important; align-items: center !important; gap: 8px !important; transition: all 0.2s !important; }
     .header-btn:hover { border-color: var(--border-hover); color: var(--text-primary); background: var(--bg-hover); }
     .header-btn.refresh { background: var(--accent-dim); color: var(--text-secondary); }
     .header-btn.refresh:hover { background: var(--accent-dim); color: var(--text-primary); }
@@ -99,8 +99,8 @@
         .filter-group { width: 100%; }
         .filter-select, .filter-input { width: 100%; }
     }
-    html[data-theme="light"] .page-desc { color: #888 !important; } html[data-theme="light"] .header-btn { color: #555 !important; }
-    html[data-theme="light"] .page-desc { color: #888 !important; } html[data-theme="light"] .header-btn { color: #555 !important; }
+    html[data-theme="light"] .page-desc { font-size: 12px !important; font-weight: 600 !important; color: var(--text-muted) !important; flex-shrink: 0 !important; } html[data-theme="light"] .header-btn { padding: 10px 18px !important; background: var(--bg-card) !important; color: var(--text-secondary) !important; border: 1px solid var(--border) !important; border-radius: 999px !important; font-size: 13px !important; font-weight: 600 !important; cursor: pointer !important; display: flex !important; align-items: center !important; gap: 8px !important; transition: all 0.2s !important; }
+    html[data-theme="light"] .page-desc { font-size: 12px !important; font-weight: 600 !important; color: var(--text-muted) !important; flex-shrink: 0 !important; } html[data-theme="light"] .header-btn { padding: 10px 18px !important; background: var(--bg-card) !important; color: var(--text-secondary) !important; border: 1px solid var(--border) !important; border-radius: 999px !important; font-size: 13px !important; font-weight: 600 !important; cursor: pointer !important; display: flex !important; align-items: center !important; gap: 8px !important; transition: all 0.2s !important; }
 </style>
 {% endblock %}
 
@@ -337,6 +337,7 @@ loadLogs();
 setInterval(loadLogs, 5000);
 </script>
 {% endblock %}
+
 
 
 

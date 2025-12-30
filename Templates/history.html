@@ -5,9 +5,9 @@
 {% block extra_css %}
 <style>
         .history-header { display: flex !important; align-items: center !important; margin-bottom: 32px !important; gap: 24px !important; }
-    .history-title { font-size: 13px !important; color: var(--text-muted) !important; flex-shrink: 0 !important; }
+    .history-title { font-size: 12px !important; font-weight: 600 !important; color: var(--text-muted) !important; flex-shrink: 0 !important; }
     .history-actions { display: flex !important; gap: 12px !important; margin-left: auto !important; }
-    .btn-secondary, .btn-primary { padding: 8px 16px !important; background: var(--bg-card) !important; color: var(--text-secondary) !important; border: 1px solid var(--border) !important; border-radius: 999px !important; font-size: 12px !important; font-weight: 600 !important; cursor: pointer !important; display: flex !important; align-items: center !important; gap: 10px !important; transition: all 0.2s !important; }
+    .btn-secondary, .btn-primary { padding: 10px 18px !important; background: var(--bg-card) !important; color: var(--text-secondary) !important; border: 1px solid var(--border) !important; border-radius: 999px !important; font-size: 13px !important; font-weight: 600 !important; cursor: pointer !important; display: flex !important; align-items: center !important; gap: 8px !important; transition: all 0.2s !important; text-transform: none !important; }
     .btn-secondary:hover, .btn-primary:hover { border-color: var(--border-hover); color: var(--text-primary); background: var(--bg-hover); }
     
     .filters-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin-bottom: 25px; }
@@ -39,7 +39,7 @@
     .table-header { padding: 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
     .table-title { font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 10px; }
     .table-title i { color: var(--cyan); }
-    .table-count { padding: 4px 12px; background: var(--accent); color: white; border-radius: 20px; font-size: 12px; font-weight: 600; }
+    .table-count { padding: 4px 12px !important; background: var(--bg-card) !important; color: var(--text-secondary) !important; border-radius: 20px !important; font-size: 12px !important; font-weight: 600 !important; border: 1px solid var(--border) !important; }
     .table-actions { display: flex; gap: 8px; }
     .table-action-btn { padding: 8px 14px; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 8px; color: var(--text-secondary); font-size: 13px; cursor: pointer; transition: all var(--transition); display: flex; align-items: center; gap: 6px; }
     .table-action-btn:hover { background: var(--bg-hover); color: var(--text-primary); border-color: var(--border-hover); }
@@ -81,7 +81,7 @@
     .pagination-btns { display: flex; gap: 5px; }
     .page-btn { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 8px; color: var(--text-secondary); font-size: 13px; cursor: pointer; transition: all var(--transition); }
     .page-btn:hover:not(:disabled) { background: var(--bg-hover); color: var(--text-primary); }
-    .page-btn.active { background: var(--accent); border-color: var(--accent); color: white; }
+    .page-btn.active { background: var(--accent) !important; border-color: var(--accent) !important; color: var(--bg-primary) !important; }
     .page-btn:disabled { opacity: 0.5; cursor: not-allowed; }
     
     .empty-table { padding: 60px 20px; text-align: center; }
@@ -107,7 +107,7 @@
     .detail-item { display: flex; flex-direction: column; gap: 5px; }
     .detail-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
     .detail-value { font-size: 14px; font-weight: 500; font-family: 'JetBrains Mono', monospace; }
-    html[data-theme="light"] .history-title { color: #888 !important; } html[data-theme="light"] .btn-secondary, html[data-theme="light"] .btn-primary { color: #555 !important; }
+    html[data-theme="light"] .history-title { font-size: 12px !important; font-weight: 600 !important; color: var(--text-muted) !important; flex-shrink: 0 !important; } html[data-theme="light"] .btn-secondary, html[data-theme="light"] .btn-primary { color: #555 !important; } html[data-theme="light"] .table-count { background: var(--bg-card) !important; color: #1a1a1a !important; border-color: var(--border) !important; }
 </style>
 {% endblock %}
 
@@ -468,6 +468,12 @@ loadFilterOptions();
 fetchHistory();
 </script>
 {% endblock %}
+
+
+
+
+
+
 
 
 

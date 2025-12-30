@@ -1,4 +1,4 @@
-﻿{% extends "base.html" %}
+{% extends "base.html" %}
 {% block title %}Dashboard - MT5 Trade Copier{% endblock %}
 {% block page_title %}<i class="fas fa-th-large"></i> Dashboard{% endblock %}
 
@@ -189,6 +189,7 @@
     .no-pairs h3 { color: #555; margin-bottom: 6px; font-size: 14px; }
     .no-pairs p { color: #333; margin-bottom: 12px; font-size: 11px; }
     .no-pairs a { color: #0088cc; font-weight: 600; text-decoration: none; }
+    html[data-theme="light"] .overview-value { color: #1a1a1a !important; } html[data-theme="light"] .pair-num { color: #1a1a1a !important; }
 </style>
 {% endblock %}
 
@@ -491,3 +492,5 @@ loadPairs();
 setInterval(loadData, 1000);
 </script>
 {% endblock %}
+
+

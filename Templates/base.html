@@ -88,7 +88,7 @@
         .sidebar.collapsed .logo-text { opacity: 0; width: 0; }
         .logo-text .title { font-size: 16px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; }
         .logo-text .subtitle { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 3px; }
-        .sidebar-toggle { position: absolute; right: -12px; top: 78px; width: 24px; height: 24px; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 1001; transition: all var(--transition); color: var(--text-muted); font-size: 10px; }
+        .sidebar-toggle { display: none !important; }
         .sidebar-toggle:hover { background: var(--text-primary); border-color: var(--text-primary); color: var(--bg-primary); }
         .sidebar.collapsed .sidebar-toggle i { transform: rotate(180deg); }
         .live-status { padding: 16px 20px; border-bottom: 1px solid var(--border); }
@@ -817,5 +817,7 @@
     {% block extra_js %}{% endblock %}
 </body>
 </html>
+
+
 
 
