@@ -4,10 +4,10 @@
 
 {% block extra_css %}
 <style>
-        .history-header { display: flex; flex-direction: column; gap: 12px; }
-    .history-title { font-size: 13px; color: var(--text-muted); }
-    .history-actions { display: flex; gap: 12px; }
-    .btn-secondary, .btn-primary { padding: 10px 20px; background: var(--bg-card); color: var(--text-secondary); border: 1px solid var(--border); border-radius: 999px; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: all 0.2s; }
+        .history-header { display: flex !important; align-items: center !important; margin-bottom: 32px !important; gap: 24px !important; }
+    .history-title { font-size: 13px !important; color: var(--text-muted) !important; flex-shrink: 0 !important; }
+    .history-actions { display: flex !important; gap: 12px !important; margin-left: auto !important; }
+    .btn-secondary, .btn-primary { padding: 8px 16px !important; background: var(--bg-card) !important; color: var(--text-secondary) !important; border: 1px solid var(--border) !important; border-radius: 999px !important; font-size: 12px !important; font-weight: 600 !important; cursor: pointer !important; display: flex !important; align-items: center !important; gap: 10px !important; transition: all 0.2s !important; }
     .btn-secondary:hover, .btn-primary:hover { border-color: var(--border-hover); color: var(--text-primary); background: var(--bg-hover); }
     
     .filters-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin-bottom: 25px; }
@@ -107,12 +107,13 @@
     .detail-item { display: flex; flex-direction: column; gap: 5px; }
     .detail-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
     .detail-value { font-size: 14px; font-weight: 500; font-family: 'JetBrains Mono', monospace; }
+    html[data-theme="light"] .history-title { color: #888 !important; } html[data-theme="light"] .btn-secondary, html[data-theme="light"] .btn-primary { color: #555 !important; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="history-header">
-    <div class="history-title">View and filter all trade history, errors, and system events</div>
+<div class="history-header" style="display: flex; justify-content: space-between; align-items: center; gap: 24px; margin-bottom: 32px; width: 100%;">
+    <div class="history-title" style="flex-shrink: 0;">Trade History</div>
     <div class="history-actions">
         <button class="btn btn-secondary btn-sm" onclick="exportHistory()"><i class="fas fa-download"></i> Export CSV</button>
         <button class="btn btn-primary btn-sm" onclick="refreshHistory()"><i class="fas fa-sync-alt"></i> Refresh</button>
@@ -467,3 +468,16 @@ loadFilterOptions();
 fetchHistory();
 </script>
 {% endblock %}
+
+
+
+
+
+
+
+
+
+
+
+
+

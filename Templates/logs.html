@@ -5,10 +5,10 @@
 {% block extra_css %}
 <style>
         /* Page Header */
-    .page-header { display: flex; flex-direction: column; gap: 12px; }
-    .page-desc { font-size: 13px; color: var(--text-muted); }
-    .header-actions { display: flex; gap: 12px; }
-    .header-btn { padding: 10px 20px; background: var(--bg-card); color: var(--text-secondary); border: 1px solid var(--border); border-radius: 999px; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: all 0.2s; }
+    .page-header { display: flex !important; align-items: center !important; margin-bottom: 32px !important; gap: 24px !important; }
+    .page-desc { font-size: 13px !important; color: var(--text-muted) !important; flex-shrink: 0 !important; }
+    .header-actions { display: flex !important; gap: 12px !important; margin-left: auto !important; }
+    .header-btn { padding: 8px 16px !important; background: var(--bg-card) !important; color: var(--text-secondary) !important; border: 1px solid var(--border) !important; border-radius: 999px !important; font-size: 12px !important; font-weight: 600 !important; cursor: pointer !important; display: flex !important; align-items: center !important; gap: 10px !important; transition: all 0.2s !important; }
     .header-btn:hover { border-color: var(--border-hover); color: var(--text-primary); background: var(--bg-hover); }
     .header-btn.refresh { background: var(--accent-dim); color: var(--text-secondary); }
     .header-btn.refresh:hover { background: var(--accent-dim); color: var(--text-primary); }
@@ -99,13 +99,15 @@
         .filter-group { width: 100%; }
         .filter-select, .filter-input { width: 100%; }
     }
+    html[data-theme="light"] .page-desc { color: #888 !important; } html[data-theme="light"] .header-btn { color: #555 !important; }
+    html[data-theme="light"] .page-desc { color: #888 !important; } html[data-theme="light"] .header-btn { color: #555 !important; }
 </style>
 {% endblock %}
 
 {% block content %}
 <!-- Page Header -->
-<div class="page-header">
-    <div class="page-desc">View and filter all trade history, errors, and system events</div>
+<div class="page-header" style="display: flex; justify-content: space-between; align-items: center; gap: 24px; margin-bottom: 32px; width: 100%;">
+    <div class="page-desc" style="flex-shrink: 0;">Logs & Activity</div>
     <div class="header-actions">
         <button class="header-btn export" onclick="exportLogs()"><i class="fas fa-download"></i> Export CSV</button>
         <button class="header-btn refresh" onclick="refreshLogs()"><i class="fas fa-sync-alt"></i> Refresh</button>
@@ -335,5 +337,27 @@ loadLogs();
 setInterval(loadLogs, 5000);
 </script>
 {% endblock %}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 

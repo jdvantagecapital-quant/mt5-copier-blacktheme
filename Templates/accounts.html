@@ -4,9 +4,9 @@
 
 {% block extra_css %}
 <style>
-        .page-header { display: flex; flex-direction: column; gap: 12px; }
-    .page-title { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 2px; }
-    .add-btn { padding: 10px 20px; background: var(--bg-card); color: var(--text-secondary); border: 1px solid var(--border); border-radius: 999px; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: all 0.2s; width: fit-content; }
+        .page-header { display: flex !important; align-items: center !important; margin-bottom: 32px !important; gap: 24px !important; }
+    .page-title { font-size: 12px !important; font-weight: 600 !important; color: var(--text-muted) !important; text-transform: uppercase !important; letter-spacing: 2px !important; flex-shrink: 0 !important; }
+    .add-btn { padding: 8px 16px !important; background: var(--bg-card) !important; color: var(--text-secondary) !important; border: 1px solid var(--border) !important; border-radius: 999px !important; font-size: 12px !important; font-weight: 600 !important; cursor: pointer !important; display: flex !important; align-items: center !important; gap: 10px !important; transition: all 0.2s !important; width: fit-content !important; margin-left: auto !important; }
     .add-btn:hover { border-color: var(--border-hover); color: var(--text-primary); background: var(--bg-hover); }
 
     /* Utility classes */
@@ -146,12 +146,13 @@
     .toast-msg.show { transform: translateX(-50%) translateY(0); }
     .toast-msg.success { background: #0a1a0a; border-color: #00cc6a; color: #00cc6a; box-shadow: 0 0 20px rgba(0,204,106,0.3); }
     .toast-msg.error { background: #1a0a0a; border-color: #ff4466; color: #ff4466; box-shadow: 0 0 20px rgba(255,68,102,0.3); }
+    html[data-theme="light"] .page-title { color: #888 !important; } html[data-theme="light"] .add-btn { color: #555 !important; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <div class="page-title">Trading Pairs</div>
+<div class="page-header" style="display: flex; justify-content: space-between; align-items: center; gap: 24px; margin-bottom: 32px; width: 100%;">
+    <div class="page-title" style="flex-shrink: 0;">Trading Pairs</div>
     <button class="add-btn" onclick="openPairModal()"><i class="fas fa-plus"></i> Add Pair</button>
 </div>
 
@@ -474,4 +475,16 @@ function toast(type, msg) {
 loadPairs();
 </script>
 {% endblock %}
+
+
+
+
+
+
+
+
+
+
+
+
 
