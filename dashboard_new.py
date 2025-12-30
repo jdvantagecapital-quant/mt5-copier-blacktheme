@@ -660,7 +660,6 @@ def create_app(process_manager):
                 pass
         return jsonify({'logs': logs})
     
-    
     @app.route('/api/logs/clear', methods=['POST'])
     @developer_required
     def api_clear_all_logs():
@@ -979,6 +978,8 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+
 
 
 
