@@ -4,9 +4,11 @@
 
 {% block extra_css %}
 <style>
-    .history-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 25px; flex-wrap: wrap; gap: 15px; }
-    .history-title { font-size: 16px; color: var(--text-secondary); }
-    .history-actions { display: flex; gap: 10px; }
+        .history-header { display: flex; flex-direction: column; gap: 12px; }
+    .history-title { font-size: 13px; color: var(--text-muted); }
+    .history-actions { display: flex; gap: 12px; }
+    .btn-secondary, .btn-primary { padding: 10px 20px; background: var(--bg-card); color: var(--text-secondary); border: 1px solid var(--border); border-radius: 999px; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: all 0.2s; }
+    .btn-secondary:hover, .btn-primary:hover { border-color: var(--border-hover); color: var(--text-primary); background: var(--bg-hover); }
     
     .filters-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin-bottom: 25px; }
     .filters-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; cursor: pointer; }

@@ -1,16 +1,15 @@
-﻿{% extends "base.html" %}
+{% extends "base.html" %}
 {% block title %}Logs & Activity - MT5 Trade Copier{% endblock %}
 {% block page_title %}<i class="fas fa-terminal"></i> Logs & Activity{% endblock %}
 
 {% block extra_css %}
 <style>
-    /* Page Header */
-    .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 28px; padding: 0 4px; }
+        /* Page Header */
+    .page-header { display: flex; flex-direction: column; gap: 12px; }
     .page-desc { font-size: 13px; color: var(--text-muted); }
     .header-actions { display: flex; gap: 12px; }
-    .header-btn { padding: 12px 20px; border-radius: 8px; font-size: 11px; font-weight: 600; border: none; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.2s; }
-    .header-btn.export { background: var(--success-dim); color: var(--success); }
-    .header-btn.export:hover { background: var(--success); color: var(--bg-primary); }
+    .header-btn { padding: 10px 20px; background: var(--bg-card); color: var(--text-secondary); border: 1px solid var(--border); border-radius: 999px; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: all 0.2s; }
+    .header-btn:hover { border-color: var(--border-hover); color: var(--text-primary); background: var(--bg-hover); }
     .header-btn.refresh { background: var(--accent-dim); color: var(--text-secondary); }
     .header-btn.refresh:hover { background: var(--accent-dim); color: var(--text-primary); }
 
@@ -336,3 +335,5 @@ loadLogs();
 setInterval(loadLogs, 5000);
 </script>
 {% endblock %}
+
+
