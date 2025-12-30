@@ -1,4 +1,4 @@
-"""
+﻿"""
 MT5 Trade Copier Dashboard - Multi-Process Architecture
 Supports multiple pairs with multiple children per pair
 
@@ -950,6 +950,32 @@ def create_app(process_manager):
                     result['closed_children'][child_id] = []
         
         return jsonify(result)
+    @app.route('/api/shutdown', methods=['POST'])
+    @login_required
+    def shutdown_system():
+        """Shutdown all running processes and exit"""
+        try:
+            pm = app.config['PROCESS_MANAGER']
+            
+            # Stop all pairs
+            config = load_config()
+            for pair in config.get('pairs', []):
+                pair_id = pair.get('id')
+                if pair_id:
+                    pm.stop_pair(pair_id)
+            
+            # Give processes time to stop
+            time.sleep(2)
+            
+            # Shutdown Flask server
+            func = request.environ.get('werkzeug.server.shutdown')
+            if func is not None:
+                func()
+            
+            return jsonify({'success': True, 'message': 'System shutdown initiated'})
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)})
+
 
     
     return app

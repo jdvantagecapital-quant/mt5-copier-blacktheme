@@ -86,7 +86,7 @@
     .acct-btn.delete { color: #ff4466; }
     .acct-btn.delete:hover { background: #ff4466; color: #fff; border-color: #ff4466; box-shadow: 0 0 10px rgba(255,68,102,0.4); }
     
-    .acct-meta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px solid #1a1a1a; }
+    .acct-meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px solid #1a1a1a; }
     .meta-item { font-size: 9px; }
     .meta-item span { color: #555; display: block; margin-bottom: 2px; text-transform: uppercase; letter-spacing: 0.5px; }
     .meta-item strong { color: #999; font-family: 'JetBrains Mono', monospace; }
@@ -103,7 +103,7 @@
     /* Modal */
     .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.9); backdrop-filter: blur(8px); z-index: 10000; display: none; align-items: center; justify-content: center; padding: 20px; }
     .modal-overlay.active { display: flex; }
-    .modal-box { background: #0d0d0d; border: 1px solid #222; border-radius: 16px; width: 100%; max-width: 520px; max-height: 85vh; overflow-y: auto; animation: modalIn 0.25s ease; }
+    .modal-box { background: #0d0d0d; border: 1px solid #222; border-radius: 16px; width: 100%; max-width: 720px; max-height: 85vh; overflow-y: auto; animation: modalIn 0.25s ease; }
     @keyframes modalIn { from { opacity: 0; transform: scale(0.96) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
     .modal-head { padding: 20px 24px; border-bottom: 1px solid #1a1a1a; display: flex; justify-content: space-between; align-items: center; background: #0a0a0a; }
     .modal-title { font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 10px; color: #ccc; }
@@ -112,7 +112,7 @@
     .modal-title i.child-icon { background: #081014; border: 1px solid #002833; color: #0088cc; }
     .modal-close { width: 32px; height: 32px; border-radius: 6px; background: #1a1a1a; border: 1px solid #333; color: #666; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
     .modal-close:hover { background: #ff4466; border-color: #ff4466; color: #fff; }
-    .modal-body { padding: 24px; }
+    .modal-body { padding: 28px; }
     .modal-foot { padding: 16px 24px; border-top: 1px solid #1a1a1a; display: flex; justify-content: flex-end; gap: 10px; background: #0a0a0a; }
     .modal-btn { padding: 12px 24px; border-radius: 8px; font-size: 11px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s; border: 1px solid; }
     .modal-btn.cancel { background: #1a1a1a; color: #888; border-color: #333; }
@@ -121,7 +121,7 @@
     .modal-btn.save:hover { background: #00aaff; box-shadow: 0 0 15px rgba(0,170,255,0.4); }
 
     /* Form */
-    .form-section { margin-bottom: 20px; }
+    .form-section { margin-bottom: 20px; padding: 16px; background: #0b0b0b; border: 1px solid #151515; border-radius: 12px; }
     .form-section-title { font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.5px; color: #555; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
     .form-section-title::before { content: ''; width: 3px; height: 12px; border-radius: 1px; }
     .form-section-title.cred::before { background: #00cc6a; box-shadow: 0 0 6px rgba(0,204,106,0.5); }
@@ -129,6 +129,7 @@
     .form-section-title.time::before { background: #cc8800; box-shadow: 0 0 6px rgba(204,136,0,0.5); }
     .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
     .form-grid.triple { grid-template-columns: 1fr 1fr 1fr; }
+    .form-grid.copy-grid { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
     .form-group { display: flex; flex-direction: column; gap: 6px; }
     .form-group.full { grid-column: 1 / -1; }
     .form-label { font-size: 10px; font-weight: 600; color: #666; display: flex; align-items: center; gap: 5px; }
@@ -218,10 +219,12 @@
                 </div>
                 <div class="form-section">
                     <div class="form-section-title settings">Copy Settings</div>
-                    <div class="form-grid triple">
+                    <div class="form-grid copy-grid">
                         <div class="form-group"><label class="form-label"><i class="fas fa-percentage"></i> Lot Multiplier</label><input type="number" class="form-input" name="lot_multiplier" id="childLotMultiplier" value="1.0" step="0.01" min="0.01"><span class="form-hint">Multiply master lot</span></div>
                         <div class="form-group"><label class="form-label"><i class="fas fa-copy"></i> Copy Mode</label><select class="form-select" name="copy_mode" id="childCopyMode"><option value="normal">Normal</option><option value="reverse">Reverse</option><option value="fixed">Fixed Lot</option></select></div>
                         <div class="form-group"><label class="form-label"><i class="fas fa-toggle-on"></i> Copy Close</label><select class="form-select" name="copy_close" id="childCopyClose"><option value="true">Yes</option><option value="false">No</option></select></div>
+                        <div class="form-group"><label class="form-label"><i class="fas fa-link"></i> Symbol Override</label><input type="text" class="form-input" name="symbol_override" id="childSymbol" placeholder="e.g. GOLD"><span class="form-hint">Child broker symbol (blank = use master)</span></div>
+                        <div class="form-group"><label class="form-label"><i class="fas fa-bolt"></i> Force Copy</label><select class="form-select" name="force_copy" id="childForceCopy"><option value="false">Disabled</option><option value="true">Enabled</option></select><span class="form-hint">Force execution even on errors</span></div>
                     </div>
                 </div>
                 <div class="form-section">
@@ -295,7 +298,7 @@ function renderPairs() {
                     '<div class="section-head"><div class="section-lbl child">Child Accounts</div><span class="child-count">' + children.length + ' Accounts</span><button class="add-child-btn" onclick="openChildModal(\'' + p.id + '\')"><i class="fas fa-plus"></i> Add</button></div>' +
                     '<div class="children-grid">' +
                     (children.length ? children.map(c => '<div class="acct-card child"><div class="acct-top"><div class="acct-info"><div class="acct-login">' + (c.account || 'N/A') + '</div><div class="acct-server">' + (c.server || 'Unknown') + '</div></div><div class="acct-btns"><button class="acct-btn edit" onclick="openEditChildModal(\'' + p.id + '\',\'' + c.id + '\')" title="Edit"><i class="fas fa-edit"></i></button><button class="acct-btn delete" onclick="deleteChild(\'' + p.id + '\',\'' + c.id + '\')"><i class="fas fa-times"></i></button></div></div>' +
-                        '<div class="acct-meta"><div class="meta-item"><span>Lot Multi</span><strong>' + (c.lot_multiplier || '1.0') + 'x</strong></div><div class="meta-item"><span>Mode</span><strong>' + (c.copy_mode || 'Normal') + '</strong></div><div class="meta-item"><span>Copy Close</span><strong>' + (c.copy_close !== false ? 'Yes' : 'No') + '</strong></div></div>' +
+                        '<div class="acct-meta"><div class="meta-item"><span>Lot Multi</span><strong>' + (c.lot_multiplier || '1.0') + 'x</strong></div><div class="meta-item"><span>Mode</span><strong>' + (c.copy_mode || 'Normal') + '</strong></div><div class="meta-item"><span>Copy Close</span><strong>' + (c.copy_close !== false ? 'Yes' : 'No') + '</strong></div><div class="meta-item"><span>Symbol</span><strong>' + (c.symbol_override || 'Master') + '</strong></div></div>' +
                     '</div>').join('') : '<div class="no-children"><i class="fas fa-user-plus"></i> No child accounts yet - click Add to create one</div>') +
                     '</div>' +
                 '</div>' +
@@ -353,6 +356,8 @@ function openChildModal(pairId) {
     document.getElementById('childLotMultiplier').value = '1.0';
     document.getElementById('childCopyMode').value = 'normal';
     document.getElementById('childCopyClose').value = 'true';
+    document.getElementById('childForceCopy').value = 'false';
+    document.getElementById('childSymbol').value = '';
     document.getElementById('childModal').classList.add('active'); 
 }
 
@@ -373,6 +378,8 @@ function openEditChildModal(pairId, childId) {
     document.getElementById('childLotMultiplier').value = child.lot_multiplier || 1.0;
     document.getElementById('childCopyMode').value = child.copy_mode || 'normal';
     document.getElementById('childCopyClose').value = child.copy_close !== false ? 'true' : 'false';
+    document.getElementById('childForceCopy').value = child.force_copy === true ? 'true' : 'false';
+    document.getElementById('childSymbol').value = child.symbol_override || '';
     document.getElementById('childActiveFrom').value = child.active_from || '';
     document.getElementById('childActiveTo').value = child.active_to || '';
     document.getElementById('childModal').classList.add('active');
@@ -427,6 +434,12 @@ async function saveChild() {
     if (data.account) data.account = parseInt(data.account) || 0;
     if (data.lot_multiplier) data.lot_multiplier = parseFloat(data.lot_multiplier) || 1.0;
     if (data.copy_close) data.copy_close = data.copy_close === 'true';
+    if (data.force_copy) data.force_copy = data.force_copy === 'true';
+    if (data.symbol_override !== undefined) {
+        data.symbol_override = data.symbol_override.trim();
+        if (!data.symbol_override) { delete data.symbol_override; }
+    }
+
     
     try {
         const url = isEdit ? '/api/pairs/' + pairId + '/children/' + childId : '/api/pairs/' + pairId + '/children';
@@ -475,6 +488,15 @@ function toast(type, msg) {
 loadPairs();
 </script>
 {% endblock %}
+
+
+
+
+
+
+
+
+
 
 
 
