@@ -439,6 +439,7 @@ def main(pair_id, child_id):
     pending_track = {}   # master_ticket -> {'symbol': ..., 'attempts': 0, 'time': ...}
     last_log = 0
     error_count = 0
+    first_run = True  # Flag to track first iteration
     
     try:
         while True:
@@ -458,6 +459,7 @@ def main(pair_id, child_id):
                 lot_multiplier = child.get('lot_multiplier', 1.0)
                 copy_mode = child.get('copy_mode', 'normal')
                 copy_close = child.get('copy_close', True)
+                force_copy = child.get('force_copy', False)
                 
                 # Read shared memory - Header: timestamp(8) + balance(8) + equity(8) + count(4) = 28 bytes
                 mm.seek(0)
@@ -511,6 +513,12 @@ def main(pair_id, child_id):
                 # Open new positions
                 for master_ticket, pos in master_now.items():
                     if master_ticket not in tracked_master and master_ticket not in pending_track:
+                        # On first run with force_copy disabled, skip existing positions
+                        if first_run and not force_copy:
+                            tracked_master[master_ticket] = -1  # Mark as existed before start
+                            log.log(f"Skipping existing position {master_ticket} (force_copy disabled)", "INFO")
+                            continue
+                        
                         child_volume = round(pos['volume'] * lot_multiplier, 2)
                         if child_volume < 0.01:
                             child_volume = 0.01
@@ -583,6 +591,13 @@ def main(pair_id, child_id):
                     child_pos_count = len(mt5.positions_get() or [])
                     log.log(f"Status: Tracking {len(tracked_master)} | Pending {len(pending_track)} | Child has {child_pos_count} positions", "INFO")
                     last_log = now
+                
+                # Mark first run complete
+                if first_run:
+                    first_run = False
+                    if not force_copy:
+                        skipped = len([t for t in tracked_master.values() if t == -1])
+                        log.log(f"First run complete. Skipped {skipped} existing positions.", "INFO")
                 
                 error_count = 0
                 time.sleep(0.01)
