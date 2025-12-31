@@ -1,4 +1,4 @@
-﻿"""
+"""
 MT5 Trade Copier Dashboard - Multi-Process Architecture
 Supports multiple pairs with multiple children per pair
 
@@ -243,6 +243,7 @@ def create_app(process_manager):
             'master_password': data.get('master_password', ''),
             'master_server': (data.get('master_server') or '').strip(),
             'enabled': data.get('enabled', True),
+            **{f'master_symbol_{i}': data.get(f'master_symbol_{i}', '').upper() for i in range(1, 21)},
             'children': []
         }
         # Process children if provided
@@ -260,6 +261,9 @@ def create_app(process_manager):
                 'server': (child_data.get('server') or '').strip(),
                 'copy_mode': child_data.get('copy_mode', 'full'),
                 'lot_multiplier': float(child_data.get('lot_multiplier') or 1.0),
+                'symbol_override': child_data.get('symbol_override', ''),
+                'force_copy': child_data.get('force_copy', False),
+                **{f'child_symbol_{i}': child_data.get(f'child_symbol_{i}', '').upper() for i in range(1, 21)},
                 'active_from': child_data.get('active_from') or None,
                 'active_to': child_data.get('active_to') or None,
                 'enabled': child_data.get('enabled', True)
@@ -297,6 +301,11 @@ def create_app(process_manager):
         for key in ['name', 'master_terminal', 'master_password', 'master_server']:
             if key in data:
                 pair[key] = (data[key] or '').strip() if isinstance(data[key], str) else data[key]
+        # Update master symbol fields
+        for i in range(1, 21):
+            key = f'master_symbol_{i}'
+            if key in data:
+                pair[key] = data[key].upper() if isinstance(data[key], str) else ''
         if 'enabled' in data:
             pair['enabled'] = data['enabled']
         # Update children if provided
@@ -401,12 +410,18 @@ def create_app(process_manager):
             return jsonify({'success': False, 'error': 'Child not found'})
         
         # Update child fields
-        for key in ['name', 'terminal', 'account', 'password', 'server', 'lot_multiplier', 'copy_mode', 'copy_close', 'enabled', 'period']:
+        for key in ['name', 'terminal', 'account', 'password', 'server', 'lot_multiplier', 'copy_mode', 'copy_close', 'enabled', 'period', 'symbol_override', 'force_copy']:
             if key in data:
                 value = data[key]
                 if key in ['terminal', 'server'] and isinstance(value, str):
                     value = value.strip('"' + chr(39) + '  ')
                 child[key] = value
+        
+        # Update child symbol fields
+        for i in range(1, 21):
+            key = f'child_symbol_{i}'
+            if key in data:
+                child[key] = data[key].upper() if isinstance(data[key], str) else data[key]
         
         save_config(config)
         return jsonify({'success': True, 'child': child})
@@ -1004,6 +1019,7 @@ def main():
 
 if __name__ == '__main__':
     main()
+
 
 
 

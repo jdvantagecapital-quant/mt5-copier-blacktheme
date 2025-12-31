@@ -144,6 +144,33 @@ def write_child_data(pair_id, child_id, balance, equity, positions):
     except Exception as e:
         pass
 
+
+def map_symbol(master_symbol, child_config):
+    """Map master symbol to child symbol based on symbol mapping configuration"""
+    try:
+        master_sym_upper = master_symbol.upper().strip()
+        
+        # Check the 5 symbol mapping slots
+        for i in range(1, 21):
+            master_slot_key = f'master_symbol_{i}'
+            child_slot_key = f'child_symbol_{i}'
+            
+            master_slot = child_config.get(master_slot_key, '').upper().strip()
+            if master_slot and master_slot == master_sym_upper:
+                child_sym = child_config.get(child_slot_key, '').strip()
+                if child_sym:
+                    return child_sym
+        
+        # Fallback to symbol_override for backward compatibility
+        override = child_config.get('symbol_override', '').strip()
+        if override:
+            return override
+        
+        # Return original symbol if no mapping found
+        return master_symbol
+    except Exception as e:
+        return master_symbol
+
 def open_trade(symbol, trade_type, volume, sl, tp, magic, comment, log, copy_mode='normal'):
     """Open a new trade on child account with retry logic"""
     max_retries = 3
@@ -490,8 +517,9 @@ def main(pair_id, child_id):
                         
                         log.log(f"NEW SIGNAL: {pos['symbol']} detected from master", "SIGNAL")
                         
+                        mapped_symbol = map_symbol(pos['symbol'], child)
                         success = open_trade(
-                            pos['symbol'], 
+                            mapped_symbol, 
                             pos['type'], 
                             child_volume,
                             pos['sl'],
