@@ -1,12 +1,19 @@
 # -*- mode: python ; coding: utf-8 -*-
 
-
 a = Analysis(
     ['launcher_new.py'],
     pathex=[],
     binaries=[],
     datas=[('Templates', 'Templates'), ('static', 'static')],
-    hiddenimports=[],
+    hiddenimports=[
+        'flask',
+        'jinja2',
+        'MetaTrader5',
+        'werkzeug',
+        'master_watcher_new',
+        'child_executor_new',
+        'dashboard_new',
+    ],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
