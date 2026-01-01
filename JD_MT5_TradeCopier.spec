@@ -1,4 +1,4 @@
-# -*- mode: python ; coding: utf-8 -*-
+﻿# -*- mode: python ; coding: utf-8 -*-
 
 a = Analysis(
     ['launcher_new.py'],
@@ -42,7 +42,7 @@ exe = EXE(
     upx=True,
     upx_exclude=[],
     runtime_tmpdir=None,
-    console=False,
+    console=True,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
