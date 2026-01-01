@@ -704,13 +704,15 @@ def create_app(process_manager):
     @app.route('/api/all-logs', methods=['GET'])
     @login_required
     def api_get_all_logs():
-        """Get all activity logs from all pairs"""
+        """Get all activity logs from all pairs, masters and children with full identification"""
         all_logs = []
         config = load_config()
+        limit = request.args.get('limit', 500, type=int)
         
         for pair in config.get('pairs', []):
             pair_id = pair.get('id')
-            pair_name = pair.get('name', pair_id)
+            pair_name = pair.get('name', f'Pair {pair_id}')
+            master_account = pair.get('master_account', 'Unknown')
             
             # Load master activity
             master_log = os.path.join(DATA_DIR, 'logs', f'master_activity_{pair_id}.json')
@@ -718,13 +720,23 @@ def create_app(process_manager):
                 try:
                     with open(master_log, 'r') as f:
                         master_activities = json.load(f)
-                    for log in master_activities[:50]:
+                    for log in master_activities[:100]:
                         all_logs.append({
-                            'time': f"{log.get('date', '')} {log.get('time', '')}".strip(),
+                            'timestamp': f"{log.get('date', '')} {log.get('time', '')}".strip(),
                             'type': log.get('type', 'info'),
-                            'message': f"[{pair_name}] [MASTER] {log.get('message', '')}",
-                            'source': 'master',
-                            'pair': pair_id
+                            'action': log.get('action', log.get('type', 'info')),
+                            'message': log.get('message', ''),
+                            'account': str(master_account),
+                            'account_type': 'MASTER',
+                            'pair_id': pair_id,
+                            'pair_name': pair_name,
+                            'symbol': log.get('symbol', ''),
+                            'ticket': log.get('ticket', ''),
+                            'volume': log.get('volume', ''),
+                            'price': log.get('price', ''),
+                            'sl': log.get('sl', ''),
+                            'tp': log.get('tp', ''),
+                            'source': 'master'
                         })
                 except:
                     pass
@@ -732,25 +744,64 @@ def create_app(process_manager):
             # Load children activities
             for child in pair.get('children', []):
                 child_id = child.get('id')
+                child_account = child.get('account', 'Unknown')
                 child_log = os.path.join(DATA_DIR, 'logs', f'activity_log_{pair_id}_{child_id}.json')
                 if os.path.exists(child_log):
                     try:
                         with open(child_log, 'r') as f:
                             child_activities = json.load(f)
-                        for log in child_activities[:50]:
+                        for log in child_activities[:100]:
                             all_logs.append({
-                                'time': f"{log.get('date', '')} {log.get('time', '')}".strip(),
+                                'timestamp': f"{log.get('date', '')} {log.get('time', '')}".strip(),
                                 'type': log.get('type', 'info'),
-                                'message': f"[{pair_name}] [CHILD {child_id}] {log.get('message', '')}",
+                                'action': log.get('action', log.get('type', 'info')),
+                                'message': log.get('message', ''),
+                                'account': str(child_account),
+                                'account_type': 'CHILD',
+                                'pair_id': pair_id,
+                                'pair_name': pair_name,
+                                'symbol': log.get('symbol', ''),
+                                'ticket': log.get('ticket', ''),
+                                'volume': log.get('volume', ''),
+                                'price': log.get('price', ''),
+                                'sl': log.get('sl', ''),
+                                'tp': log.get('tp', ''),
                                 'source': 'child',
-                                'pair': pair_id
+                                'child_id': child_id
                             })
                     except:
                         pass
         
-        # Sort by time descending
-        all_logs.sort(key=lambda x: x.get('time', ''), reverse=True)
-        return jsonify({'logs': all_logs[:200]})
+        # Also load trade_log.txt for general system logs
+        trade_log = os.path.join(DATA_DIR, 'logs', 'trade_log.txt')
+        if os.path.exists(trade_log):
+            try:
+                with open(trade_log, 'r') as f:
+                    lines = f.readlines()[-100:]
+                for line in lines:
+                    line = line.strip()
+                    if line:
+                        log_type = 'info'
+                        if 'ERROR' in line.upper(): log_type = 'error'
+                        elif 'WARNING' in line.upper(): log_type = 'warning'
+                        elif 'SUCCESS' in line.upper() or 'COPIED' in line.upper(): log_type = 'trade'
+                        all_logs.append({
+                            'timestamp': '',
+                            'type': log_type,
+                            'action': log_type,
+                            'message': line,
+                            'account': 'System',
+                            'account_type': 'SYSTEM',
+                            'pair_id': '',
+                            'pair_name': 'System',
+                            'source': 'system'
+                        })
+            except:
+                pass
+        
+        # Sort by timestamp descending
+        all_logs.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
+        return jsonify({'logs': all_logs[:limit], 'total': len(all_logs)})
 
 
     
@@ -1363,6 +1414,7 @@ def main():
 
 if __name__ == '__main__':
     main()
+
 
 
 

@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 {% block title %}Account Management - MT5 Trade Copier{% endblock %}
 {% block page_title %}<i class="fas fa-users-cog"></i> Account Management{% endblock %}
 
@@ -266,12 +266,24 @@ let pairs = [];
 let editingPair = null;
 let editingChild = null;
 
-async function loadPairs() {
+async function loadPairs(preserveExpanded = false) {
+    // Save expanded pair IDs before reloading
+    let expandedIds = [];
+    if (preserveExpanded) {
+        expandedIds = [...document.querySelectorAll('.pair-card.expanded')].map(c => c.id);
+    }
     try {
         const res = await fetch('/api/pairs');
         pairs = await res.json();
         if (!Array.isArray(pairs)) pairs = pairs.pairs || [];
         renderPairs();
+        // Restore expanded state
+        if (preserveExpanded && expandedIds.length > 0) {
+            expandedIds.forEach(id => {
+                const card = document.getElementById(id);
+                if (card) card.classList.add('expanded');
+            });
+        }
     } catch(e) { console.error(e); }
 }
 
@@ -470,8 +482,7 @@ async function savePair() {
         });
         const result = await res.json();
         if (result.success) {
-            closePairModal();
-            loadPairs();
+            closePairModal(); loadPairs(true);
             toast('success', isEdit ? 'Pair updated!' : 'Pair created!');
         } else {
             toast('error', result.error || 'Failed');
@@ -509,8 +520,7 @@ async function saveChild() {
         });
         const result = await res.json();
         if (result.success) {
-            closeChildModal();
-            loadPairs();
+            closeChildModal(); loadPairs(true);
             toast('success', isEdit ? 'Child updated!' : 'Child added!');
         } else {
             toast('error', result.error || 'Failed');
@@ -521,8 +531,7 @@ async function saveChild() {
 async function deletePair(id) {
     if (!confirm('Delete this pair and all children?')) return;
     try {
-        await fetch('/api/pairs/' + id, { method: 'DELETE' });
-        loadPairs();
+        await fetch('/api/pairs/' + id, { method: 'DELETE' }); loadPairs(true);
         toast('success', 'Pair deleted');
     } catch(e) { toast('error', 'Failed'); }
 }
@@ -530,8 +539,7 @@ async function deletePair(id) {
 async function deleteChild(pairId, childId) {
     if (!confirm('Remove this child?')) return;
     try {
-        await fetch('/api/pairs/' + pairId + '/children/' + childId, { method: 'DELETE' });
-        loadPairs();
+        await fetch('/api/pairs/' + pairId + '/children/' + childId, { method: 'DELETE' }); loadPairs(true);
         toast('success', 'Child removed');
     } catch(e) { toast('error', 'Failed'); }
 }
@@ -546,6 +554,7 @@ function toast(type, msg) {
 loadPairs();
 </script>
 {% endblock %}
+
 
 
 

@@ -4,125 +4,119 @@
 
 {% block extra_css %}
 <style>
-        .history-header { display: flex !important; align-items: center !important; margin-bottom: 32px !important; gap: 24px !important; }
-    .history-title { font-size: 12px !important; font-weight: 600 !important; color: var(--text-muted) !important; flex-shrink: 0 !important; }
-    .history-actions { display: flex !important; gap: 12px !important; margin-left: auto !important; }
-    .btn-secondary, .btn-primary { padding: 10px 18px !important; background: var(--bg-card) !important; color: var(--text-secondary) !important; border: 1px solid var(--border) !important; border-radius: 999px !important; font-size: 13px !important; font-weight: 600 !important; cursor: pointer !important; display: flex !important; align-items: center !important; gap: 8px !important; transition: all 0.2s !important; text-transform: none !important; }
-    .btn-secondary:hover, .btn-primary:hover { border-color: var(--border-hover); color: var(--text-primary); background: var(--bg-hover); }
+    .history-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+    .add-btn { padding: 10px 18px; background: var(--bg-card, #fff); color: var(--text-secondary, #666); border: 1px solid var(--border, #e5e7eb); border-radius: 999px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.2s; }
+    .add-btn:hover { border-color: var(--border-hover, #ccc); color: var(--text-primary, #333); background: var(--bg-hover, #f9fafb); }
+    .history-title { font-size: 14px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: 1px; }
+    .history-actions { display: flex; gap: 10px; }
     
-    .filters-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin-bottom: 25px; }
-    .filters-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; cursor: pointer; }
-    .filters-title { font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 10px; }
-    .filters-title i { color: var(--accent); }
-    .filters-toggle { color: var(--text-muted); transition: transform var(--transition); }
+    .filters-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; margin-bottom: 20px; }
+    .filters-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; cursor: pointer; }
+    .filters-title { font-size: 12px; font-weight: 600; color: #666; display: flex; align-items: center; gap: 8px; }
+    .filters-title i { color: #cc8800; }
+    .filters-toggle { color: #888; transition: transform 0.2s; }
     .filters-header.collapsed .filters-toggle { transform: rotate(-180deg); }
-    .filters-body { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
+    .filters-body { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
     .filters-body.collapsed { display: none; }
-    .filter-group { display: flex; flex-direction: column; gap: 8px; }
-    .filter-label { font-size: 13px; font-weight: 500; color: var(--text-secondary); }
-    .filter-select, .filter-input { padding: 10px 14px; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-size: 13px; transition: all var(--transition); }
-    .filter-select:focus, .filter-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
-    .filter-actions { display: flex; gap: 10px; align-items: flex-end; }
+    .filter-group { display: flex; flex-direction: column; gap: 4px; }
+    .filter-label { font-size: 10px; font-weight: 600; color: #666; text-transform: uppercase; letter-spacing: 0.5px; }
+    .filter-select, .filter-input { padding: 8px 10px; background: #fff; border: 1px solid #d1d5db; border-radius: 6px; color: #333; font-size: 11px; }
+    .filter-select:focus, .filter-input:focus { outline: none; border-color: #cc8800; }
+    .filter-actions { display: flex; gap: 8px; align-items: flex-end; }
     
-    .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 25px; }
-    .mini-stat { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; display: flex; align-items: center; gap: 15px; transition: all var(--transition); }
-    .mini-stat:hover { border-color: var(--border-hover); transform: translateY(-2px); }
-    .mini-stat-icon { width: 45px; height: 45px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
-    .mini-stat-icon.trades { background: rgba(59, 130, 246, 0.15); color: var(--accent); }
-    .mini-stat-icon.profit { background: rgba(16, 185, 129, 0.15); color: var(--success); }
-    .mini-stat-icon.loss { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
-    .mini-stat-icon.volume { background: rgba(139, 92, 246, 0.15); color: var(--purple); }
-    .mini-stat-content .value { font-size: 22px; font-weight: 700; }
-    .mini-stat-content .label { font-size: 12px; color: var(--text-muted); }
+    .stats-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 20px; }
+    @media (max-width: 900px) { .stats-row { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 600px) { .stats-row { grid-template-columns: repeat(2, 1fr); } }
+    .mini-stat { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 14px; display: flex; align-items: center; gap: 12px; }
+    .mini-stat-icon { width: 38px; height: 38px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+    .mini-stat-icon.total { background: rgba(102,126,234,0.15); color: #667eea; }
+    .mini-stat-icon.trades { background: rgba(0,200,100,0.15); color: #00c864; }
+    .mini-stat-icon.copied { background: rgba(0,136,204,0.15); color: #0088cc; }
+    .mini-stat-icon.errors { background: rgba(255,68,102,0.15); color: #ff4466; }
+    .mini-stat-icon.info { background: rgba(204,136,0,0.15); color: #cc8800; }
+    .mini-stat-content .value { font-size: 20px; font-weight: 700; font-family: 'JetBrains Mono', monospace; color: #333; }
+    .mini-stat-content .label { font-size: 10px; color: #666; text-transform: uppercase; }
     
-    .history-table-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
-    .table-header { padding: 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
-    .table-title { font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 10px; }
-    .table-title i { color: var(--cyan); }
-    .table-count { padding: 4px 12px !important; background: var(--bg-card) !important; color: var(--text-secondary) !important; border-radius: 20px !important; font-size: 12px !important; font-weight: 600 !important; border: 1px solid var(--border) !important; }
-    .table-actions { display: flex; gap: 8px; }
-    .table-action-btn { padding: 8px 14px; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 8px; color: var(--text-secondary); font-size: 13px; cursor: pointer; transition: all var(--transition); display: flex; align-items: center; gap: 6px; }
-    .table-action-btn:hover { background: var(--bg-hover); color: var(--text-primary); border-color: var(--border-hover); }
+    .history-table-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; }
+    .table-header { padding: 14px 16px; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: space-between; background: #f9fafb; }
+    .table-title { font-size: 12px; font-weight: 600; color: #666; display: flex; align-items: center; gap: 8px; }
+    .table-title i { color: #0088cc; }
+    .table-count { padding: 3px 10px; background: rgba(0,136,204,0.1); color: #0088cc; border-radius: 12px; font-size: 10px; font-weight: 700; border: 1px solid rgba(0,136,204,0.2); }
+    .table-actions { display: flex; gap: 6px; }
+    .table-action-btn { padding: 6px 10px; background: #fff; border: 1px solid #d1d5db; border-radius: 6px; color: #666; font-size: 10px; cursor: pointer; display: flex; align-items: center; gap: 5px; }
+    .table-action-btn:hover { background: #f3f4f6; color: #333; }
     
-    .table-container { overflow-x: auto; }
+    .table-container { max-height: 500px; overflow-y: auto; }
     table { width: 100%; border-collapse: collapse; }
-    th { padding: 14px 20px; text-align: left; font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; background: var(--bg-primary); border-bottom: 1px solid var(--border); white-space: nowrap; position: sticky; top: 0; }
-    td { padding: 16px 20px; border-bottom: 1px solid var(--border); font-size: 13px; vertical-align: middle; }
-    tr:last-child td { border-bottom: none; }
-    tr:hover { background: rgba(59, 130, 246, 0.03); }
+    th { padding: 10px 14px; text-align: left; font-size: 9px; font-weight: 700; color: #666; text-transform: uppercase; letter-spacing: 0.5px; background: #f9fafb; border-bottom: 1px solid #e5e7eb; position: sticky; top: 0; }
+    td { padding: 10px 14px; border-bottom: 1px solid #f3f4f6; font-size: 11px; color: #333; }
+    tr:hover { background: rgba(102,126,234,0.03); }
     
-    .trade-type { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; }
-    .trade-type.buy { background: rgba(16, 185, 129, 0.15); color: var(--success); }
-    .trade-type.sell { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
-    .trade-type.modify { background: rgba(245, 158, 11, 0.15); color: var(--warning); }
-    .trade-type.close { background: rgba(139, 92, 246, 0.15); color: var(--purple); }
+    .log-level { padding: 2px 6px; border-radius: 3px; font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+    .log-level.trade { background: rgba(0,200,100,0.2); color: #00c864; }
+    .log-level.open { background: rgba(0,200,100,0.2); color: #00c864; }
+    .log-level.close { background: rgba(139,92,246,0.2); color: #8b5cf6; }
+    .log-level.modify { background: rgba(245,158,11,0.2); color: #f59e0b; }
+    .log-level.copy { background: rgba(0,136,204,0.2); color: #0088cc; }
+    .log-level.info { background: rgba(59,130,246,0.2); color: #3b82f6; }
+    .log-level.warning { background: rgba(245,158,11,0.2); color: #f59e0b; }
+    .log-level.error { background: rgba(255,68,102,0.2); color: #ff4466; }
+    .log-level.debug { background: rgba(100,116,139,0.2); color: #94a3b8; }
+    .log-level.signal { background: rgba(204,136,0,0.2); color: #cc8800; }
     
-    .symbol-badge { display: inline-flex; align-items: center; gap: 6px; font-weight: 500; }
-    .symbol-badge i { color: var(--accent); font-size: 14px; }
+    .account-badge { font-size: 8px; padding: 2px 5px; border-radius: 3px; font-weight: 600; }
+    .account-badge.master { background: rgba(204,136,0,0.15); color: #cc8800; }
+    .account-badge.child { background: rgba(0,136,204,0.15); color: #0088cc; }
+    .account-badge.system { background: rgba(100,116,139,0.15); color: #94a3b8; }
     
-    .profit-value { font-weight: 600; font-family: 'JetBrains Mono', monospace; }
-    .profit-value.positive { color: var(--success); }
-    .profit-value.negative { color: var(--danger); }
-    
-    .account-info { display: flex; flex-direction: column; gap: 2px; }
-    .account-info .primary { font-weight: 500; }
-    .account-info .secondary { font-size: 11px; color: var(--text-muted); }
-    
-    .status-badge { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 500; }
-    .status-badge.success { background: rgba(16, 185, 129, 0.15); color: var(--success); }
-    .status-badge.failed { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
-    .status-badge.pending { background: rgba(245, 158, 11, 0.15); color: var(--warning); }
-    
-    .details-btn { padding: 6px 12px; background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 6px; color: var(--accent); font-size: 12px; cursor: pointer; transition: all var(--transition); }
-    .details-btn:hover { background: var(--accent); color: white; }
-    
-    .pagination { padding: 20px; border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
-    .pagination-info { font-size: 13px; color: var(--text-muted); }
-    .pagination-btns { display: flex; gap: 5px; }
-    .page-btn { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 8px; color: var(--text-secondary); font-size: 13px; cursor: pointer; transition: all var(--transition); }
-    .page-btn:hover:not(:disabled) { background: var(--bg-hover); color: var(--text-primary); }
-    .page-btn.active { background: var(--accent) !important; border-color: var(--accent) !important; color: var(--bg-primary) !important; }
-    .page-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-    
-    .empty-table { padding: 60px 20px; text-align: center; }
-    .empty-table i { font-size: 50px; color: var(--text-muted); opacity: 0.3; margin-bottom: 20px; }
-    .empty-table h3 { font-size: 18px; margin-bottom: 8px; }
-    .empty-table p { color: var(--text-secondary); font-size: 14px; }
-    
-    .log-level { padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
-    .log-level.debug { background: rgba(100, 116, 139, 0.2); color: #94a3b8; }
-    .log-level.info { background: rgba(59, 130, 246, 0.2); color: var(--accent); }
-    .log-level.warning { background: rgba(245, 158, 11, 0.2); color: var(--warning); }
-    .log-level.error { background: rgba(239, 68, 68, 0.2); color: var(--danger); }
-    .log-level.trade { background: rgba(16, 185, 129, 0.2); color: var(--success); }
+    .symbol-badge { display: inline-flex; align-items: center; gap: 4px; font-weight: 500; font-size: 10px; color: #333; }
+    .symbol-badge i { color: #667eea; font-size: 10px; }
     
     .expand-row { cursor: pointer; }
-    .expand-row td:first-child::before { content: '\f054'; font-family: 'Font Awesome 6 Free'; font-weight: 900; margin-right: 10px; font-size: 10px; color: var(--text-muted); transition: transform var(--transition); display: inline-block; }
+    .expand-row td:first-child::before { content: '\f054'; font-family: 'Font Awesome 6 Free'; font-weight: 900; margin-right: 8px; font-size: 8px; color: #aaa; transition: transform 0.2s; display: inline-block; }
     .expand-row.expanded td:first-child::before { transform: rotate(90deg); }
     .detail-row { display: none; }
     .detail-row.show { display: table-row; }
-    .detail-row td { padding: 0; background: var(--bg-primary); }
-    .detail-content { padding: 20px; }
-    .detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; }
-    .detail-item { display: flex; flex-direction: column; gap: 5px; }
-    .detail-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
-    .detail-value { font-size: 14px; font-weight: 500; font-family: 'JetBrains Mono', monospace; }
-    html[data-theme="light"] .history-title { font-size: 12px !important; font-weight: 600 !important; color: var(--text-muted) !important; flex-shrink: 0 !important; } html[data-theme="light"] .btn-secondary, html[data-theme="light"] .btn-primary { color: #555 !important; } html[data-theme="light"] .table-count { background: var(--bg-card) !important; color: #1a1a1a !important; border-color: var(--border) !important; }
+    .detail-row td { padding: 0; background: #f9fafb; }
+    .detail-content { padding: 14px; }
+    .detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+    .detail-item { display: flex; flex-direction: column; gap: 2px; }
+    .detail-label { font-size: 9px; color: #888; text-transform: uppercase; }
+    .detail-value { font-size: 11px; font-weight: 500; font-family: 'JetBrains Mono', monospace; color: #333; }
+    
+    .pagination { padding: 12px 16px; border-top: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: space-between; }
+    .pagination-info { font-size: 10px; color: #666; }
+    .pagination-btns { display: flex; gap: 4px; }
+    .page-btn { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; background: #fff; border: 1px solid #d1d5db; border-radius: 6px; color: #666; font-size: 10px; cursor: pointer; }
+    .page-btn:hover:not(:disabled) { background: #f3f4f6; color: #333; }
+    .page-btn.active { background: #667eea; border-color: #667eea; color: #fff; }
+    .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    
+    .empty-table { padding: 40px 16px; text-align: center; }
+    .empty-table i { font-size: 36px; color: #d1d5db; margin-bottom: 12px; }
+    .empty-table h3 { font-size: 14px; color: #666; margin-bottom: 4px; }
+    .empty-table p { font-size: 11px; color: #999; }
+    
+    .btn-sm { padding: 6px 12px; font-size: 10px; font-weight: 600; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; border: 1px solid; }
+    .btn-secondary { background: #fff; color: #666; border-color: #d1d5db; }
+    .btn-secondary:hover { background: #f3f4f6; color: #333; }
+    .btn-primary { background: rgba(102,126,234,0.1); color: #667eea; border-color: rgba(102,126,234,0.3); }
+    .btn-primary:hover { background: rgba(102,126,234,0.2); }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="history-header" style="display: flex; justify-content: space-between; align-items: center; gap: 24px; margin-bottom: 32px; width: 100%;">
-    <div class="history-title" style="flex-shrink: 0;">Trade History</div>
-    <div class="history-actions">
-        <button class="btn btn-secondary btn-sm" onclick="exportHistory()"><i class="fas fa-download"></i> Export CSV</button>
-        <button class="btn btn-primary btn-sm" onclick="refreshHistory()"><i class="fas fa-sync-alt"></i> Refresh</button>
+<div class="page-header" style="display: flex; justify-content: space-between; align-items: center; gap: 24px; margin-bottom: 32px; width: 100%;">
+    <div class="page-title" style="flex-shrink: 0;">Event History</div>
+    <div class="header-actions" style="display: flex; gap: 10px;">
+        <button class="add-btn" onclick="exportHistory()" style="background: rgba(102,126,234,0.1); color: #667eea; border-color: rgba(102,126,234,0.3);"><i class="fas fa-download"></i> Export</button>
+        <button class="add-btn" onclick="refreshHistory()"><i class="fas fa-sync-alt"></i> Refresh</button>
     </div>
 </div>
 
 <div class="filters-card">
     <div class="filters-header" onclick="toggleFilters()">
-        <h3 class="filters-title"><i class="fas fa-filter"></i> Advanced Filters</h3>
+        <div class="filters-title"><i class="fas fa-filter"></i> Filters</div>
         <i class="fas fa-chevron-up filters-toggle"></i>
     </div>
     <div class="filters-body" id="filtersBody">
@@ -130,116 +124,66 @@
             <label class="filter-label">Log Type</label>
             <select class="filter-select" id="filterType">
                 <option value="">All Types</option>
-                <option value="trade">Trade Opened</option>
-                <option value="close">Trade Closed</option>
-                <option value="modify">Trade Modified</option>
-                <option value="error">Errors</option>
-                <option value="warning">Warnings</option>
+                <option value="trade">Trade / Open</option>
+                <option value="close">Close</option>
+                <option value="copy">Copied</option>
+                <option value="modify">Modify</option>
+                <option value="signal">Signal</option>
+                <option value="error">Error</option>
+                <option value="warning">Warning</option>
                 <option value="info">Info</option>
-                <option value="debug">Debug</option>
             </select>
         </div>
         <div class="filter-group">
             <label class="filter-label">Pair</label>
-            <select class="filter-select" id="filterPair">
-                <option value="">All Pairs</option>
-            </select>
+            <select class="filter-select" id="filterPair"><option value="">All Pairs</option></select>
         </div>
         <div class="filter-group">
             <label class="filter-label">Account</label>
-            <select class="filter-select" id="filterAccount">
-                <option value="">All Accounts</option>
-            </select>
+            <select class="filter-select" id="filterAccount"><option value="">All Accounts</option></select>
         </div>
         <div class="filter-group">
             <label class="filter-label">Symbol</label>
-            <input type="text" class="filter-input" id="filterSymbol" placeholder="e.g., EURUSD">
+            <input type="text" class="filter-input" id="filterSymbol" placeholder="e.g. EURUSD">
         </div>
         <div class="filter-group">
-            <label class="filter-label">Date From</label>
+            <label class="filter-label">From</label>
             <input type="date" class="filter-input" id="filterDateFrom">
         </div>
         <div class="filter-group">
-            <label class="filter-label">Date To</label>
+            <label class="filter-label">To</label>
             <input type="date" class="filter-input" id="filterDateTo">
         </div>
         <div class="filter-group">
             <label class="filter-label">Search</label>
-            <input type="text" class="filter-input" id="filterSearch" placeholder="Search messages...">
+            <input type="text" class="filter-input" id="filterSearch" placeholder="Search...">
         </div>
         <div class="filter-actions">
-            <button class="btn btn-primary btn-sm" onclick="applyFilters()"><i class="fas fa-search"></i> Apply</button>
-            <button class="btn btn-secondary btn-sm" onclick="clearFilters()"><i class="fas fa-times"></i> Clear</button>
+            <button class="btn-sm btn-primary" onclick="applyFilters()"><i class="fas fa-search"></i> Apply</button>
+            <button class="btn-sm btn-secondary" onclick="clearFilters()"><i class="fas fa-times"></i> Clear</button>
         </div>
     </div>
 </div>
 
 <div class="stats-row">
-    <div class="mini-stat">
-        <div class="mini-stat-icon trades"><i class="fas fa-exchange-alt"></i></div>
-        <div class="mini-stat-content">
-            <div class="value" id="statTotalTrades">0</div>
-            <div class="label">Total Events</div>
-        </div>
-    </div>
-    <div class="mini-stat">
-        <div class="mini-stat-icon profit"><i class="fas fa-arrow-trend-up"></i></div>
-        <div class="mini-stat-content">
-            <div class="value" id="statSuccessful">0</div>
-            <div class="label">Successful</div>
-        </div>
-    </div>
-    <div class="mini-stat">
-        <div class="mini-stat-icon loss"><i class="fas fa-exclamation-triangle"></i></div>
-        <div class="mini-stat-content">
-            <div class="value" id="statErrors">0</div>
-            <div class="label">Errors</div>
-        </div>
-    </div>
-    <div class="mini-stat">
-        <div class="mini-stat-icon volume"><i class="fas fa-clock"></i></div>
-        <div class="mini-stat-content">
-            <div class="value" id="statToday">0</div>
-            <div class="label">Today</div>
-        </div>
-    </div>
+    <div class="mini-stat"><div class="mini-stat-icon total"><i class="fas fa-list"></i></div><div class="mini-stat-content"><div class="value" id="statTotal">0</div><div class="label">Total Events</div></div></div>
+    <div class="mini-stat"><div class="mini-stat-icon trades"><i class="fas fa-arrow-up"></i></div><div class="mini-stat-content"><div class="value" id="statTrades">0</div><div class="label">Trades</div></div></div>
+    <div class="mini-stat"><div class="mini-stat-icon copied"><i class="fas fa-copy"></i></div><div class="mini-stat-content"><div class="value" id="statCopied">0</div><div class="label">Copied</div></div></div>
+    <div class="mini-stat"><div class="mini-stat-icon errors"><i class="fas fa-exclamation-triangle"></i></div><div class="mini-stat-content"><div class="value" id="statErrors">0</div><div class="label">Errors</div></div></div>
+    <div class="mini-stat"><div class="mini-stat-icon info"><i class="fas fa-info-circle"></i></div><div class="mini-stat-content"><div class="value" id="statInfo">0</div><div class="label">Info</div></div></div>
 </div>
 
 <div class="history-table-card">
     <div class="table-header">
-        <div class="table-title">
-            <i class="fas fa-list"></i> Event Log
-            <span class="table-count" id="tableCount">0</span>
-        </div>
+        <div class="table-title"><i class="fas fa-list"></i> Event Log <span class="table-count" id="tableCount">0</span></div>
         <div class="table-actions">
-            <button class="table-action-btn" onclick="toggleAutoRefresh()"><i class="fas fa-sync-alt" id="autoRefreshIcon"></i> Auto-refresh</button>
+            <button class="table-action-btn" onclick="toggleAutoRefresh()"><i class="fas fa-sync-alt" id="autoRefreshIcon"></i> Auto</button>
         </div>
     </div>
     <div class="table-container">
         <table id="historyTable">
-            <thead>
-                <tr>
-                    <th>Timestamp</th>
-                    <th>Level</th>
-                    <th>Type</th>
-                    <th>Pair</th>
-                    <th>Account</th>
-                    <th>Symbol</th>
-                    <th>Message</th>
-                    <th>Details</th>
-                </tr>
-            </thead>
-            <tbody id="historyBody">
-                <tr class="empty-table-row">
-                    <td colspan="8">
-                        <div class="empty-table">
-                            <i class="fas fa-inbox"></i>
-                            <h3>No history records</h3>
-                            <p>Trade history and events will appear here</p>
-                        </div>
-                    </td>
-                </tr>
-            </tbody>
+            <thead><tr><th>Time</th><th>Type</th><th>Account</th><th>Symbol</th><th>Message</th><th></th></tr></thead>
+            <tbody id="historyBody"><tr><td colspan="6"><div class="empty-table"><i class="fas fa-inbox"></i><h3>Loading...</h3><p>Fetching history data</p></div></td></tr></tbody>
         </table>
     </div>
     <div class="pagination">
@@ -251,32 +195,64 @@
 
 {% block extra_js %}
 <script>
-let allLogs = [];
-let filteredLogs = [];
-let currentPage = 1;
-const perPage = 25;
-let autoRefresh = false;
-let refreshInterval = null;
+let allLogs = [], filteredLogs = [], currentPage = 1;
+const perPage = 30;
+let autoRefresh = false, refreshInterval = null;
 
 async function fetchHistory() {
     try {
-        const response = await fetch('/api/all-logs?limit=500');
-        const data = await response.json();
+        const res = await fetch('/api/all-logs?limit=1000');
+        const data = await res.json();
         allLogs = data.logs || [];
+        updateFilterOptions();
         applyFilters();
         updateStats();
-    } catch (error) {
-        console.error('Error fetching history:', error);
-        showToast('error', 'Error', 'Failed to fetch history');
+    } catch (e) {
+        console.error('Error fetching history:', e);
+        document.getElementById('historyBody').innerHTML = '<tr><td colspan="6"><div class="empty-table"><i class="fas fa-exclamation-triangle"></i><h3>Error loading data</h3><p>Check console for details</p></div></td></tr>';
     }
 }
 
+function normalizeType(log) {
+    const t = (log.type || log.action || 'info').toLowerCase();
+    const msg = (log.message || '').toLowerCase();
+    if (t === 'trade' || t === 'open' || msg.includes('opened') || msg.includes('open trade') || msg.includes('buy ') || msg.includes('sell ')) return 'trade';
+    if (t === 'close' || msg.includes('closed') || msg.includes('close trade')) return 'close';
+    if (t === 'copy' || msg.includes('copied')) return 'copy';
+    if (t === 'modify' || msg.includes('modified') || msg.includes('sl/tp')) return 'modify';
+    if (t === 'signal' || msg.includes('signal')) return 'signal';
+    if (t === 'error' || msg.includes('error') || msg.includes('failed')) return 'error';
+    if (t === 'warning' || msg.includes('warning')) return 'warning';
+    if (t === 'debug') return 'debug';
+    return 'info';
+}
+
 function updateStats() {
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById('statTotalTrades').textContent = allLogs.length;
-    document.getElementById('statSuccessful').textContent = allLogs.filter(l => ['trade', 'open', 'close', 'info'].includes(l.type?.toLowerCase())).length;
-    document.getElementById('statErrors').textContent = allLogs.filter(l => l.type?.toLowerCase() === 'error').length;
-    document.getElementById('statToday').textContent = allLogs.filter(l => l.timestamp?.includes(today)).length;
+    const total = filteredLogs.length;
+    const trades = filteredLogs.filter(l => normalizeType(l) === 'trade').length;
+    const copied = filteredLogs.filter(l => normalizeType(l) === 'copy' || (l.message || '').toLowerCase().includes('copied')).length;
+    const errors = filteredLogs.filter(l => ['error', 'warning'].includes(normalizeType(l))).length;
+    const info = filteredLogs.filter(l => normalizeType(l) === 'info').length;
+    
+    document.getElementById('statTotal').textContent = total;
+    document.getElementById('statTrades').textContent = trades;
+    document.getElementById('statCopied').textContent = copied;
+    document.getElementById('statErrors').textContent = errors;
+    document.getElementById('statInfo').textContent = info;
+}
+
+function updateFilterOptions() {
+    const pairSelect = document.getElementById('filterPair');
+    const accountSelect = document.getElementById('filterAccount');
+    const pairs = new Set(), accounts = new Set();
+    allLogs.forEach(l => {
+        if (l.pair_name) pairs.add(l.pair_name);
+        if (l.account) accounts.add(l.account);
+    });
+    pairSelect.innerHTML = '<option value="">All Pairs</option>';
+    accountSelect.innerHTML = '<option value="">All Accounts</option>';
+    [...pairs].sort().forEach(p => pairSelect.innerHTML += '<option value="'+p+'">'+p+'</option>');
+    [...accounts].sort().forEach(a => accountSelect.innerHTML += '<option value="'+a+'">'+a+'</option>');
 }
 
 function applyFilters() {
@@ -289,13 +265,14 @@ function applyFilters() {
     const search = document.getElementById('filterSearch').value.toLowerCase();
     
     filteredLogs = allLogs.filter(log => {
-        if (type && log.type?.toLowerCase() !== type) return false;
-        if (pair && log.pair_id?.toString() !== pair) return false;
-        if (account && !log.account?.toString().includes(account)) return false;
-        if (symbol && !log.symbol?.toLowerCase().includes(symbol)) return false;
-        if (dateFrom && log.timestamp < dateFrom) return false;
-        if (dateTo && log.timestamp > dateTo + 'T23:59:59') return false;
-        if (search && !log.message?.toLowerCase().includes(search)) return false;
+        const logType = normalizeType(log);
+        if (type && logType !== type) return false;
+        if (pair && log.pair_name !== pair) return false;
+        if (account && log.account !== account) return false;
+        if (symbol && !(log.symbol || '').toLowerCase().includes(symbol)) return false;
+        if (dateFrom && (log.timestamp || '') < dateFrom) return false;
+        if (dateTo && (log.timestamp || '') > dateTo + 'T23:59:59') return false;
+        if (search && !(log.message || '').toLowerCase().includes(search)) return false;
         return true;
     });
     
@@ -326,42 +303,29 @@ function renderTable() {
     document.getElementById('totalRecords').textContent = filteredLogs.length;
     
     if (pageData.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8"><div class="empty-table"><i class="fas fa-inbox"></i><h3>No records found</h3><p>Try adjusting your filters</p></div></td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6"><div class="empty-table"><i class="fas fa-inbox"></i><h3>No records found</h3><p>Try adjusting your filters</p></div></td></tr>';
         document.getElementById('paginationBtns').innerHTML = '';
         return;
     }
     
     tbody.innerHTML = pageData.map((log, idx) => {
-        const level = log.type?.toLowerCase() || 'info';
-        const levelClass = ['error', 'warning', 'debug', 'info', 'trade'].includes(level) ? level : 'info';
-        return `
-            <tr class="expand-row" onclick="toggleRow(this)">
-                <td><span style="font-family: 'JetBrains Mono', monospace; font-size: 12px;">${log.timestamp || '-'}</span></td>
-                <td><span class="log-level ${levelClass}">${level}</span></td>
-                <td><span class="trade-type ${level}">${log.action || log.type || '-'}</span></td>
-                <td>${log.pair_id ? 'Pair ' + log.pair_id : '-'}</td>
-                <td><div class="account-info"><span class="primary">${log.account || '-'}</span><span class="secondary">${log.account_type || ''}</span></div></td>
-                <td><span class="symbol-badge">${log.symbol ? '<i class="fas fa-chart-line"></i> ' + log.symbol : '-'}</span></td>
-                <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${(log.message || '').replace(/"/g, '&quot;')}">${log.message || '-'}</td>
-                <td><button class="details-btn"><i class="fas fa-eye"></i></button></td>
-            </tr>
-            <tr class="detail-row">
-                <td colspan="8">
-                    <div class="detail-content">
-                        <div class="detail-grid">
-                            <div class="detail-item"><span class="detail-label">Full Message</span><span class="detail-value">${log.message || '-'}</span></div>
-                            <div class="detail-item"><span class="detail-label">Ticket</span><span class="detail-value">${log.ticket || '-'}</span></div>
-                            <div class="detail-item"><span class="detail-label">Volume</span><span class="detail-value">${log.volume || '-'}</span></div>
-                            <div class="detail-item"><span class="detail-label">Price</span><span class="detail-value">${log.price || '-'}</span></div>
-                            <div class="detail-item"><span class="detail-label">SL</span><span class="detail-value">${log.sl || '-'}</span></div>
-                            <div class="detail-item"><span class="detail-label">TP</span><span class="detail-value">${log.tp || '-'}</span></div>
-                            <div class="detail-item"><span class="detail-label">Error Code</span><span class="detail-value">${log.error_code || '-'}</span></div>
-                            <div class="detail-item"><span class="detail-label">Raw Data</span><span class="detail-value" style="word-break: break-all;">${JSON.stringify(log)}</span></div>
-                        </div>
-                    </div>
-                </td>
-            </tr>
-        `;
+        const type = normalizeType(log);
+        const accType = (log.account_type || 'system').toLowerCase();
+        return '<tr class="expand-row" onclick="toggleRow(this)">' +
+            '<td><span style="font-family:monospace;font-size:10px;color:#666;">'+(log.timestamp || '-')+'</span></td>' +
+            '<td><span class="log-level '+type+'">'+type.toUpperCase()+'</span></td>' +
+            '<td><span class="account-badge '+accType+'">'+accType.toUpperCase()+'</span> '+(log.account || '-')+'</td>' +
+            '<td><span class="symbol-badge">'+(log.symbol ? '<i class="fas fa-chart-line"></i> '+log.symbol : '-')+'</span></td>' +
+            '<td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+((log.message||'').replace(/"/g,'&quot;'))+'">'+(log.message || '-')+'</td>' +
+            '<td><i class="fas fa-chevron-right" style="color:#ccc;font-size:10px;"></i></td></tr>' +
+            '<tr class="detail-row"><td colspan="6"><div class="detail-content"><div class="detail-grid">' +
+            '<div class="detail-item"><span class="detail-label">Full Message</span><span class="detail-value">'+(log.message || '-')+'</span></div>' +
+            '<div class="detail-item"><span class="detail-label">Pair</span><span class="detail-value">'+(log.pair_name || '-')+'</span></div>' +
+            '<div class="detail-item"><span class="detail-label">Ticket</span><span class="detail-value">'+(log.ticket || '-')+'</span></div>' +
+            '<div class="detail-item"><span class="detail-label">Volume</span><span class="detail-value">'+(log.volume || '-')+'</span></div>' +
+            '<div class="detail-item"><span class="detail-label">Price</span><span class="detail-value">'+(log.price || '-')+'</span></div>' +
+            '<div class="detail-item"><span class="detail-label">SL / TP</span><span class="detail-value">'+(log.sl || '-')+' / '+(log.tp || '-')+'</span></div>' +
+            '</div></div></td></tr>';
     }).join('');
     
     renderPagination();
@@ -370,30 +334,21 @@ function renderTable() {
 function toggleRow(row) {
     row.classList.toggle('expanded');
     const detailRow = row.nextElementSibling;
-    if (detailRow && detailRow.classList.contains('detail-row')) {
-        detailRow.classList.toggle('show');
-    }
+    if (detailRow && detailRow.classList.contains('detail-row')) detailRow.classList.toggle('show');
 }
 
 function renderPagination() {
     const totalPages = Math.ceil(filteredLogs.length / perPage);
     const container = document.getElementById('paginationBtns');
-    
     if (totalPages <= 1) { container.innerHTML = ''; return; }
     
-    let html = '<button class="page-btn" onclick="goToPage(' + (currentPage - 1) + ')" ' + (currentPage === 1 ? 'disabled' : '') + '><i class="fas fa-chevron-left"></i></button>';
-    
-    for (let i = 1; i <= Math.min(totalPages, 5); i++) {
-        html += '<button class="page-btn ' + (i === currentPage ? 'active' : '') + '" onclick="goToPage(' + i + ')">' + i + '</button>';
+    let html = '<button class="page-btn" onclick="goToPage('+(currentPage-1)+')" '+(currentPage===1?'disabled':'')+'><i class="fas fa-chevron-left"></i></button>';
+    const start = Math.max(1, currentPage - 2);
+    const end = Math.min(totalPages, start + 4);
+    for (let i = start; i <= end; i++) {
+        html += '<button class="page-btn '+(i===currentPage?'active':'')+'" onclick="goToPage('+i+')">'+i+'</button>';
     }
-    
-    if (totalPages > 5) {
-        html += '<button class="page-btn" disabled>...</button>';
-        html += '<button class="page-btn ' + (totalPages === currentPage ? 'active' : '') + '" onclick="goToPage(' + totalPages + ')">' + totalPages + '</button>';
-    }
-    
-    html += '<button class="page-btn" onclick="goToPage(' + (currentPage + 1) + ')" ' + (currentPage === totalPages ? 'disabled' : '') + '><i class="fas fa-chevron-right"></i></button>';
-    
+    html += '<button class="page-btn" onclick="goToPage('+(currentPage+1)+')" '+(currentPage===totalPages?'disabled':'')+'><i class="fas fa-chevron-right"></i></button>';
     container.innerHTML = html;
 }
 
@@ -412,78 +367,20 @@ function toggleFilters() {
 function toggleAutoRefresh() {
     autoRefresh = !autoRefresh;
     const icon = document.getElementById('autoRefreshIcon');
-    if (autoRefresh) {
-        icon.classList.add('fa-spin');
-        refreshInterval = setInterval(fetchHistory, 5000);
-        showToast('info', 'Auto-refresh', 'Enabled - refreshing every 5 seconds');
-    } else {
-        icon.classList.remove('fa-spin');
-        clearInterval(refreshInterval);
-        showToast('info', 'Auto-refresh', 'Disabled');
-    }
+    if (autoRefresh) { icon.classList.add('fa-spin'); refreshInterval = setInterval(fetchHistory, 5000); }
+    else { icon.classList.remove('fa-spin'); clearInterval(refreshInterval); }
 }
 
-function refreshHistory() {
-    fetchHistory();
-    showToast('success', 'Refreshed', 'History data updated');
-}
+function refreshHistory() { fetchHistory(); if (typeof showToast === 'function') showToast('success', 'Refreshed', 'History updated'); }
 
 function exportHistory() {
-    if (filteredLogs.length === 0) {
-        showToast('warning', 'No data', 'No records to export');
-        return;
-    }
-    
-    const headers = ['Timestamp', 'Type', 'Pair', 'Account', 'Symbol', 'Message', 'Ticket', 'Volume', 'Price'];
-    const csv = [headers.join(',')];
-    
-    filteredLogs.forEach(log => {
-        csv.push([
-            log.timestamp || '', log.type || '', log.pair_id || '', log.account || '',
-            log.symbol || '', '"' + (log.message || '').replace(/"/g, '""') + '"',
-            log.ticket || '', log.volume || '', log.price || ''
-        ].join(','));
-    });
-    
-    const blob = new Blob([csv.join('\n')], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = 'trade_history_' + new Date().toISOString().split('T')[0] + '.csv';
-    a.click();
-    showToast('success', 'Exported', 'CSV file downloaded');
+    if (filteredLogs.length === 0) { if (typeof showToast === 'function') showToast('warning', 'No data', 'No records to export'); return; }
+    const csv = ['Timestamp,Type,Account,Symbol,Message,Ticket,Volume,Price'];
+    filteredLogs.forEach(l => csv.push([l.timestamp||'', normalizeType(l), l.account||'', l.symbol||'', '"'+(l.message||'').replace(/"/g,'""')+'"', l.ticket||'', l.volume||'', l.price||''].join(',')));
+    const blob = new Blob([csv.join('\n')], {type:'text/csv'});
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'history_' + new Date().toISOString().split('T')[0] + '.csv'; a.click();
 }
 
-async function loadFilterOptions() {
-    try {
-        const response = await fetch('/api/pairs');
-        const data = await response.json();
-        const pairSelect = document.getElementById('filterPair');
-        (data.pairs || []).forEach(p => {
-            pairSelect.innerHTML += '<option value="' + p.id + '">' + (p.name || 'Pair ' + p.id) + '</option>';
-        });
-    } catch (e) { console.error('Error loading filter options:', e); }
-}
-
-loadFilterOptions();
 fetchHistory();
 </script>
 {% endblock %}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
