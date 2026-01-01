@@ -185,11 +185,7 @@
                 <div class="form-section">
                     <div class="form-section-title settings" style="display:flex;justify-content:space-between;align-items:center;"><span>Master Symbol Mapping</span><button type="button" class="modal-btn" onclick="addMasterSymbolSlot()" style="padding:6px 12px;font-size:12px;"><i class="fas fa-plus"></i> Add Slot</button></div><div class="form-grid copy-grid" id="masterSymbolContainer">
                         <div class="form-group"><label class="form-label"><i class="fas fa-sync"></i> Master Symbol 1</label><input type="text" class="form-input" name="master_symbol_1" id="pairMasterSymbol1" placeholder="e.g. EURUSD"><span class="form-hint">Maps to child symbol 1</span></div>
-                        <div class="form-group"><label class="form-label"><i class="fas fa-sync"></i> Master Symbol 2</label><input type="text" class="form-input" name="master_symbol_2" id="pairMasterSymbol2" placeholder="e.g. GBPUSD"><span class="form-hint">Maps to child symbol 2</span></div>
-                        <div class="form-group"><label class="form-label"><i class="fas fa-sync"></i> Master Symbol 3</label><input type="text" class="form-input" name="master_symbol_3" id="pairMasterSymbol3" placeholder="e.g. XAUUSD"><span class="form-hint">Maps to child symbol 3</span></div>
-                        <div class="form-group"><label class="form-label"><i class="fas fa-sync"></i> Master Symbol 4</label><input type="text" class="form-input" name="master_symbol_4" id="pairMasterSymbol4" placeholder="e.g. USDJPY"><span class="form-hint">Maps to child symbol 4</span></div>
-                        <div class="form-group"><label class="form-label"><i class="fas fa-sync"></i> Master Symbol 5</label><input type="text" class="form-input" name="master_symbol_5" id="pairMasterSymbol5" placeholder="e.g. USDCAD"><span class="form-hint">Maps to child symbol 5</span></div>
-                    </div>
+                        </div>
                 </div>
                 <div class="form-section">
                     <div class="form-section-title settings">Pair Settings</div>
@@ -232,17 +228,17 @@
                         <div class="form-group"><label class="form-label"><i class="fas fa-percentage"></i> Lot Multiplier</label><input type="number" class="form-input" name="lot_multiplier" id="childLotMultiplier" value="1.0" step="0.01" min="0.01"><span class="form-hint">Multiply master lot</span></div>
                         <div class="form-group"><label class="form-label"><i class="fas fa-copy"></i> Copy Mode</label><select class="form-select" name="copy_mode" id="childCopyMode"><option value="normal">Normal</option><option value="reverse">Reverse</option><option value="fixed">Fixed Lot</option></select></div>
                         <div class="form-group"><label class="form-label"><i class="fas fa-toggle-on"></i> Copy Close</label><select class="form-select" name="copy_close" id="childCopyClose"><option value="true">Yes</option><option value="false">No</option></select></div>
-                        <div class="form-group"><label class="form-label"><i class="fas fa-link"></i> Symbol Override</label><input type="text" class="form-input" name="symbol_override" id="childSymbol" placeholder="e.g. GOLD"><span class="form-hint">Child broker symbol (blank = use master)</span></div>
+                        
                         <div class="form-group"><label class="form-label"><i class="fas fa-bolt"></i> Force Copy</label><select class="form-select" name="force_copy" id="childForceCopy"><option value="false">Disabled</option><option value="true">Enabled</option></select><span class="form-hint">Force execution even on errors</span></div>
                     </div>
                 </div>
                 <div class="form-section">
                     <div class="form-section-title settings" style="display:flex;justify-content:space-between;align-items:center;"><span>Child Symbol Mapping</span><button type="button" class="modal-btn" onclick="addChildSymbolSlot()" style="padding:6px 12px;font-size:12px;"><i class="fas fa-plus"></i> Add Slot</button></div><div class="form-grid copy-grid" id="childSymbolContainer">
                         <div class="form-group"><label class="form-label"><i class="fas fa-link"></i> Child Symbol 1</label><input type="text" class="form-input" name="child_symbol_1" id="childSymbol1" placeholder="e.g. EURUSD.b"><span class="form-hint">For master symbol 1</span></div>
-                        <div class="form-group"><label class="form-label"><i class="fas fa-link"></i> Child Symbol 2</label><input type="text" class="form-input" name="child_symbol_2" id="childSymbol2" placeholder="e.g. GBPUSD.b"><span class="form-hint">For master symbol 2</span></div>
-                        <div class="form-group"><label class="form-label"><i class="fas fa-link"></i> Child Symbol 3</label><input type="text" class="form-input" name="child_symbol_3" id="childSymbol3" placeholder="e.g. XAUUSD.b"><span class="form-hint">For master symbol 3</span></div>
-                        <div class="form-group"><label class="form-label"><i class="fas fa-link"></i> Child Symbol 4</label><input type="text" class="form-input" name="child_symbol_4" id="childSymbol4" placeholder="e.g. USDJPY.b"><span class="form-hint">For master symbol 4</span></div>
-                        <div class="form-group"><label class="form-label"><i class="fas fa-link"></i> Child Symbol 5</label><input type="text" class="form-input" name="child_symbol_5" id="childSymbol5" placeholder="e.g. USDCAD.b"><span class="form-hint">For master symbol 5</span></div>
+                        
+                        
+                        
+                        
                     </div>
                 </div>
                 <div class="form-section">
@@ -401,7 +397,6 @@ function openEditChildModal(pairId, childId) {
     document.getElementById('childCopyMode').value = child.copy_mode || 'normal';
     document.getElementById('childCopyClose').value = child.copy_close !== false ? 'true' : 'false';
     document.getElementById('childForceCopy').value = child.force_copy === true ? 'true' : 'false';
-    document.getElementById('childSymbol').value = child.symbol_override || '';
     for(let i=1; i<=5; i++) {
         const field = document.getElementById('childSymbol' + i);
         if(field) field.value = child['child_symbol_' + i] || '';

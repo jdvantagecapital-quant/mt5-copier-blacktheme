@@ -1,0 +1,706 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - MT5 Trade Copier{% endblock %}
+{% block page_title %}<i class="fas fa-th-large"></i> Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Glowing Animations */
+    @keyframes glow-border {
+        0%, 100% { box-shadow: 0 0 5px rgba(255,255,255,0.03), inset 0 1px 0 rgba(255,255,255,0.03); }
+        50% { box-shadow: 0 0 15px rgba(255,255,255,0.08), inset 0 1px 0 rgba(255,255,255,0.05); }
+    }
+    @keyframes glow-gold {
+        0%, 100% { box-shadow: 0 0 8px rgba(204,136,0,0.2); border-color: rgba(204,136,0,0.3); }
+        50% { box-shadow: 0 0 20px rgba(204,136,0,0.35); border-color: rgba(204,136,0,0.5); }
+    }
+    @keyframes glow-blue {
+        0%, 100% { box-shadow: 0 0 8px rgba(0,136,204,0.2); border-color: rgba(0,136,204,0.3); }
+        50% { box-shadow: 0 0 20px rgba(0,136,204,0.35); border-color: rgba(0,136,204,0.5); }
+    }
+    @keyframes pulse-dot {
+        0%, 100% { box-shadow: 0 0 4px currentColor; }
+        50% { box-shadow: 0 0 12px currentColor, 0 0 20px currentColor; }
+    }
+    @keyframes countUp {
+        from { opacity: 0; transform: translateY(5px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Overview Stats - Top Section */
+    .overview-section { 
+        display: grid; 
+        grid-template-columns: repeat(4, 1fr); 
+        gap: 12px; 
+        margin-bottom: 16px; 
+    }
+    @media (max-width: 900px) { .overview-section { grid-template-columns: repeat(2, 1fr); } }
+    
+    .overview-card {
+        background: linear-gradient(145deg, #0a0a0a, #111);
+        border: 1px solid #1a1a1a;
+        border-radius: 12px;
+        padding: 18px;
+        position: relative;
+        overflow: hidden;
+        animation: glow-border 4s ease-in-out infinite;
+        transition: all 0.3s;
+    }
+    .overview-card:hover {
+        transform: translateY(-2px);
+        border-color: #333;
+    }
+    .overview-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 4px;
+        height: 100%;
+        border-radius: 4px 0 0 4px;
+    }
+    .overview-card.pairs::before { background: linear-gradient(180deg, #667eea, #764ba2); }
+    .overview-card.children::before { background: linear-gradient(180deg, #0088cc, #00aaff); }
+    .overview-card.copied::before { background: linear-gradient(180deg, #00c864, #00a854); }
+    .overview-card.profit::before { background: linear-gradient(180deg, #cc8800, #ffaa00); }
+    
+    .overview-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+    .overview-icon { 
+        width: 42px; height: 42px; border-radius: 10px; 
+        display: flex; align-items: center; justify-content: center; 
+        font-size: 16px; border: 1px solid;
+    }
+    .overview-card.pairs .overview-icon { background: rgba(102,126,234,0.1); color: #667eea; border-color: rgba(102,126,234,0.2); }
+    .overview-card.children .overview-icon { background: rgba(0,136,204,0.1); color: #0088cc; border-color: rgba(0,136,204,0.2); }
+    .overview-card.copied .overview-icon { background: rgba(0,200,100,0.1); color: #00c864; border-color: rgba(0,200,100,0.2); }
+    .overview-card.profit .overview-icon { background: rgba(204,136,0,0.1); color: #cc8800; border-color: rgba(204,136,0,0.2); }
+    
+    .overview-badge { 
+        font-size: 8px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
+        padding: 4px 8px; border-radius: 10px; border: 1px solid;
+    }
+    .overview-badge.active { background: rgba(0,200,100,0.1); color: #00c864; border-color: rgba(0,200,100,0.2); }
+    .overview-badge.inactive { background: rgba(255,68,102,0.1); color: #ff4466; border-color: rgba(255,68,102,0.2); }
+    .overview-badge.neutral { background: rgba(102,126,234,0.1); color: #667eea; border-color: rgba(102,126,234,0.2); }
+    
+    .overview-value { 
+        font-size: 28px; font-weight: 700; font-family: 'JetBrains Mono', monospace; 
+        color: #eee; margin-bottom: 4px; animation: countUp 0.5s ease-out;
+    }
+    .overview-value.green { color: #00c864; }
+    .overview-value.red { color: #ff4466; }
+    .overview-label { font-size: 11px; color: #555; text-transform: uppercase; letter-spacing: 1px; }
+
+    /* Control Bar */
+    .control-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 16px;
+        background: linear-gradient(145deg, #0a0a0a, #0d0d0d);
+        border: 1px solid #1a1a1a;
+        border-radius: 8px;
+        margin-bottom: 12px;
+    }
+    .control-left { display: flex; align-items: center; gap: 16px; }
+    .status-indicator { display: flex; align-items: center; gap: 8px; padding: 6px 14px; background: rgba(0,200,100,0.08); border: 1px solid rgba(0,200,100,0.2); border-radius: 20px; }
+    .status-indicator.stopped { background: rgba(255,68,102,0.08); border-color: rgba(255,68,102,0.2); }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #00c864; animation: pulse-dot 2s ease-in-out infinite; }
+    .status-dot.stopped { background: #ff4466; }
+    .status-text { font-size: 10px; font-weight: 600; letter-spacing: 1px; color: #00c864; }
+    .status-text.stopped { color: #ff4466; }
+    .ctrl-buttons { display: flex; gap: 8px; }
+    .ctrl-btn { padding: 8px 18px; border-radius: 6px; font-size: 11px; font-weight: 600; border: 1px solid; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 6px; }
+    .ctrl-btn.start { background: rgba(0,200,100,0.1); color: #00c864; border-color: rgba(0,200,100,0.3); }
+    .ctrl-btn.start:hover:not(:disabled) { background: rgba(0,200,100,0.2); }
+    .ctrl-btn.stop { background: rgba(255,68,102,0.1); color: #ff4466; border-color: rgba(255,68,102,0.3); }
+    .ctrl-btn.stop:hover:not(:disabled) { background: rgba(255,68,102,0.2); }
+    .ctrl-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* Pair Selector */
+    .pair-selector { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; padding: 10px 14px; background: #0a0a0a; border: 1px solid #1a1a1a; border-radius: 6px; }
+    .pair-selector label { font-size: 10px; color: #444; font-weight: 500; display: flex; align-items: center; gap: 6px; }
+    .pair-select { flex: 1; max-width: 280px; padding: 8px 12px; background: #111; border: 1px solid #222; border-radius: 4px; color: #ccc; font-size: 11px; }
+
+    /* Main Grid */
+    .main-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px; margin-bottom: 16px; }
+    
+    /* Account Cards */
+    .acc-card { background: #0a0a0a; border: 1px solid #1a1a1a; border-radius: 8px; overflow: hidden; animation: glow-border 5s ease-in-out infinite; max-height: 450px; display: flex; flex-direction: column; }
+    .acc-card.master { border-left: 3px solid #cc8800; animation: glow-gold 4s ease-in-out infinite; }
+    .acc-card.child { border-left: 3px solid #0088cc; animation: glow-blue 4s ease-in-out infinite; }
+    .acc-header { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #151515; }
+    .acc-info { display: flex; align-items: center; gap: 8px; }
+    .acc-badge { font-size: 8px; font-weight: 600; padding: 3px 8px; border-radius: 3px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .acc-badge.master { background: rgba(204,136,0,0.15); color: #cc8800; }
+    .acc-badge.child { background: rgba(0,136,204,0.15); color: #0088cc; }
+    .acc-num { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #888; }
+    .acc-status { font-size: 9px; display: flex; align-items: center; gap: 4px; }
+    .acc-status.on { color: #00c864; }
+    .acc-status.off { color: #ff4466; }
+    .acc-status i { font-size: 6px; }
+    .bal-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 12px; background: #080808; }
+    .bal-label { font-size: 9px; color: #444; text-transform: uppercase; margin-bottom: 2px; }
+    .bal-value { font-size: 15px; font-weight: 600; font-family: 'JetBrains Mono', monospace; color: #ccc; }
+
+    /* Tabs */
+    .acc-tabs { display: flex; border-bottom: 1px solid #151515; background: #080808; }
+    .tab-btn { flex: 1; padding: 8px; font-size: 9px; color: #444; background: transparent; border: none; cursor: pointer; transition: all 0.2s; border-bottom: 2px solid transparent; }
+    .tab-btn:hover { color: #666; }
+    .tab-btn.active { color: #888; border-bottom-color: #444; }
+    .tab-panel { display: none; }
+    .tab-panel.show { display: block; }
+
+    /* Trades Table */
+    .trades-tbl { padding: 8px 12px 12px; overflow-y: auto; max-height: 200px; }
+    .tbl-head { display: grid; grid-template-columns: 1.5fr 0.8fr 0.8fr 1fr 1fr; gap: 6px; padding: 6px 0; border-bottom: 1px solid #151515; font-size: 8px; color: #333; text-transform: uppercase; }
+    .tbl-row { display: grid; grid-template-columns: 1.5fr 0.8fr 0.8fr 1fr 1fr; gap: 6px; padding: 6px 0; border-bottom: 1px solid #0d0d0d; align-items: center; }
+    .t-sym { font-weight: 600; color: #888; font-size: 10px; }
+    .t-type { font-size: 8px; font-weight: 600; text-transform: uppercase; }
+    .t-type.buy { color: #00c864; }
+    .t-type.sell { color: #ff4466; }
+    .t-lots, .t-price { font-family: 'JetBrains Mono', monospace; color: #666; font-size: 9px; }
+    .t-pnl { font-family: 'JetBrains Mono', monospace; font-weight: 600; text-align: right; }
+    .t-pnl.pos { color: #00c864; }
+    .t-pnl.neg { color: #ff4466; }
+
+    /* Activity Panel */
+    .activity-panel { padding: 8px 12px 12px; max-height: 200px; overflow-y: auto; flex: 1; }
+    .activity-item { display: flex; align-items: flex-start; gap: 6px; padding: 4px 0; border-bottom: 1px solid #111; font-size: 9px; }
+    .activity-item:last-child { border-bottom: none; }
+    .activity-time { font-family: 'JetBrains Mono', monospace; color: #444; font-size: 8px; }
+    .activity-icon { width: 16px; height: 16px; border-radius: 3px; display: flex; align-items: center; justify-content: center; font-size: 7px; border: 1px solid; flex-shrink: 0; }
+    .activity-icon.TRADE { background: rgba(0,200,100,0.1); color: #00c864; border-color: rgba(0,200,100,0.2); }
+    .activity-icon.CLOSE { background: rgba(255,68,102,0.1); color: #ff4466; border-color: rgba(255,68,102,0.2); }
+    .activity-icon.INFO { background: rgba(0,136,204,0.1); color: #0088cc; border-color: rgba(0,136,204,0.2); }
+    .activity-icon.SIGNAL { background: rgba(204,136,0,0.1); color: #cc8800; border-color: rgba(204,136,0,0.2); }
+    .activity-icon.ERROR { background: rgba(255,68,102,0.1); color: #ff4466; border-color: rgba(255,68,102,0.2); }
+    .activity-msg { color: #666; flex: 1; line-height: 1.3; }
+
+    /* Total Row */
+    .total-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #080808; border-top: 1px solid #1a1a1a; }
+    .total-lbl { font-size: 9px; color: #444; font-weight: 500; text-transform: uppercase; }
+    .total-val { font-size: 14px; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+    .total-val.pos { color: #00c864; }
+    .total-val.neg { color: #ff4466; }
+
+    .empty-msg { padding: 20px; text-align: center; color: #333; font-size: 10px; }
+    .no-pairs { padding: 40px; text-align: center; background: #0a0a0a; border: 1px dashed #222; border-radius: 8px; }
+    .no-pairs i { font-size: 30px; color: #222; margin-bottom: 12px; display: block; }
+    .no-pairs h3 { color: #555; margin-bottom: 6px; font-size: 14px; }
+    .no-pairs p { color: #333; margin-bottom: 12px; font-size: 11px; }
+    .no-pairs a { color: #0088cc; font-weight: 600; text-decoration: none; }
+    html[data-theme="light"] .overview-value { color: #1a1a1a !important; } html[data-theme="light"] .pair-num { color: #1a1a1a !important; }
+
+    /* Date Filter */
+    .date-filter-btn { 
+        background: rgba(102,126,234,0.1); 
+        border: 1px solid rgba(102,126,234,0.2); 
+        color: #667eea; 
+        padding: 4px 8px; 
+        border-radius: 4px; 
+        font-size: 9px; 
+        cursor: pointer; 
+        display: flex; 
+        align-items: center; 
+        gap: 4px;
+        transition: all 0.2s;
+    }
+    .date-filter-btn:hover { background: rgba(102,126,234,0.2); }
+    .date-filter-btn.active { background: rgba(102,126,234,0.3); border-color: #667eea; }
+    .date-filter-popup {
+        position: absolute;
+        top: 100%;
+        right: 0;
+        background: #111;
+        border: 1px solid #333;
+        border-radius: 6px;
+        padding: 10px;
+        z-index: 100;
+        min-width: 200px;
+        display: none;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    }
+    .date-filter-popup.show { display: block; }
+    .filter-presets { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+    .filter-preset { 
+        padding: 4px 10px; 
+        background: #1a1a1a; 
+        border: 1px solid #333; 
+        border-radius: 4px; 
+        color: #888; 
+        font-size: 9px; 
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .filter-preset:hover { background: #222; color: #aaa; }
+    .filter-preset.active { background: rgba(102,126,234,0.2); border-color: #667eea; color: #667eea; }
+    .date-range-inputs { display: flex; gap: 6px; margin-bottom: 8px; }
+    .date-input { 
+        flex: 1; 
+        padding: 6px 8px; 
+        background: #0a0a0a; 
+        border: 1px solid #333; 
+        border-radius: 4px; 
+        color: #aaa; 
+        font-size: 10px;
+        font-family: 'JetBrains Mono', monospace;
+    }
+    .date-input:focus { border-color: #667eea; outline: none; }
+    .filter-apply-btn {
+        width: 100%;
+        padding: 6px;
+        background: rgba(102,126,234,0.2);
+        border: 1px solid #667eea;
+        border-radius: 4px;
+        color: #667eea;
+        font-size: 10px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .filter-apply-btn:hover { background: rgba(102,126,234,0.3); }
+    .acc-header { position: relative; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Overview Stats -->
+<div class="overview-section">
+    <div class="overview-card pairs">
+        <div class="overview-top">
+            <div class="overview-icon"><i class="fas fa-crown"></i></div>
+            <span class="overview-badge neutral" id="pairsStatus">Configured</span>
+        </div>
+        <div class="overview-value" id="totalPairs">0</div>
+        <div class="overview-label">Trading Pairs</div>
+    </div>
+    <div class="overview-card children">
+        <div class="overview-top">
+            <div class="overview-icon"><i class="fas fa-users"></i></div>
+            <span class="overview-badge neutral" id="childrenStatus">Connected</span>
+        </div>
+        <div class="overview-value" id="totalChildren">0</div>
+        <div class="overview-label">Child Accounts</div>
+    </div>
+    <div class="overview-card copied">
+        <div class="overview-top">
+            <div class="overview-icon"><i class="fas fa-copy"></i></div>
+            <span class="overview-badge active" id="copiedStatus">Today</span>
+        </div>
+        <div class="overview-value" id="totalCopied">0</div>
+        <div class="overview-label">Trades Copied</div>
+    </div>
+    <div class="overview-card profit">
+        <div class="overview-top">
+            <div class="overview-icon"><i class="fas fa-chart-line"></i></div>
+            <span class="overview-badge active" id="profitStatus">Floating</span>
+        </div>
+        <div class="overview-value green" id="totalProfit">$0.00</div>
+        <div class="overview-label">Total P/L</div>
+    </div>
+</div>
+
+<div class="control-bar">
+    <div class="control-left">
+        <div class="status-indicator stopped" id="statusIndicator">
+            <div class="status-dot stopped" id="statusDot"></div>
+            <span class="status-text stopped" id="statusText">STOPPED</span>
+        </div>
+    </div>
+    <div class="ctrl-buttons">
+        <button class="ctrl-btn start" id="btnStart" onclick="startCopier()"><i class="fas fa-play"></i> Start</button>
+        <button class="ctrl-btn stop" id="btnStop" onclick="stopCopier()" disabled><i class="fas fa-stop"></i> Stop</button>
+    </div>
+</div>
+
+<div class="pair-selector">
+    <label><i class="fas fa-exchange-alt"></i> Active Pair</label>
+    <select class="pair-select" id="pairSelect" onchange="selectPair()">
+        <option value="">Loading...</option>
+    </select>
+</div>
+
+<div class="main-grid" id="accountsContainer"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let allPairs = [], selectedPairId = null, selectedPair = null, processStatus = {};
+let globalStats = { total: 0, success: 0, failed: 0 }, isRunning = false;
+let tradeData = { master: [], children: {}, child_data: {}, balance: 0, equity: 0, activities: {}, closed_master: [], closed_children: {} };
+let activeTab = {};
+
+async function loadPairs() {
+    try { const res = await fetch('/api/pairs'); allPairs = await res.json(); } catch(e) { allPairs = []; }
+    const select = document.getElementById('pairSelect');
+    
+    // Update overview stats
+    updateOverviewStats();
+    
+    if (!allPairs.length) {
+        select.innerHTML = '<option value="">No pairs</option>';
+        document.getElementById('accountsContainer').innerHTML = '<div class="no-pairs" style="grid-column:1/-1"><i class="fas fa-plug"></i><h3>No Copy Pairs</h3><p>Configure pairs to start</p><a href="/accounts"><i class="fas fa-plus"></i> Add Pair</a></div>';
+        return;
+    }
+    select.innerHTML = allPairs.map(p => '<option value="' + p.id + '">' + (p.name || 'Pair') + ' (' + p.master_account + ')</option>').join('');
+    const saved = localStorage.getItem('selectedPairId');
+    if (saved && allPairs.find(p => p.id === saved)) select.value = saved;
+    selectPair();
+}
+
+function updateOverviewStats() {
+    // Total pairs
+    document.getElementById('totalPairs').textContent = allPairs.length;
+    
+    // Total children across all pairs
+    let totalChildren = 0;
+    allPairs.forEach(p => totalChildren += (p.children || []).length);
+    document.getElementById('totalChildren').textContent = totalChildren;
+    
+    // Update badges based on status
+    const pairsStatus = document.getElementById('pairsStatus');
+    if (allPairs.length > 0) {
+        pairsStatus.textContent = 'Active';
+        pairsStatus.className = 'overview-badge active';
+    } else {
+        pairsStatus.textContent = 'None';
+        pairsStatus.className = 'overview-badge inactive';
+    }
+    
+    const childrenStatus = document.getElementById('childrenStatus');
+    if (totalChildren > 0) {
+        childrenStatus.textContent = 'Ready';
+        childrenStatus.className = 'overview-badge active';
+    } else {
+        childrenStatus.textContent = 'None';
+        childrenStatus.className = 'overview-badge inactive';
+    }
+}
+
+function selectPair() {
+    const select = document.getElementById('pairSelect');
+    selectedPairId = select.value;
+    localStorage.setItem('selectedPairId', selectedPairId);
+    selectedPair = allPairs.find(p => p.id === selectedPairId);
+    activeTab = {};
+    loadData();
+}
+
+async function loadData() {
+    if (!selectedPairId || !selectedPair) return;
+    try { const res = await fetch('/api/process-status'); processStatus = (await res.json()).status || {}; } catch(e) { processStatus = {}; }
+    const pairStatus = processStatus[selectedPairId];
+    isRunning = pairStatus && pairStatus.master_running;
+    updateStatusUI();
+    try { 
+        const res2 = await fetch('/api/pairs/' + selectedPairId + '/trades');
+        tradeData = await res2.json();
+    } catch(e) { tradeData = { master: [], children: {}, child_data: {}, balance: 0, equity: 0, activities: {}, closed_master: [], closed_children: {} }; }
+    try { const res3 = await fetch('/api/status'); globalStats = (await res3.json()).stats || { total: 0, success: 0, failed: 0 }; } catch(e) {}
+    renderAccounts();
+    updateStats();
+}
+
+function updateStatusUI() {
+    const indicator = document.getElementById('statusIndicator');
+    const dot = document.getElementById('statusDot');
+    const txt = document.getElementById('statusText');
+    if (isRunning) {
+        indicator.className = 'status-indicator';
+        dot.className = 'status-dot';
+        txt.className = 'status-text';
+        txt.textContent = 'RUNNING';
+        document.getElementById('btnStart').disabled = true;
+        document.getElementById('btnStop').disabled = false;
+    } else {
+        indicator.className = 'status-indicator stopped';
+        dot.className = 'status-dot stopped';
+        txt.className = 'status-text stopped';
+        txt.textContent = 'STOPPED';
+        document.getElementById('btnStart').disabled = false;
+        document.getElementById('btnStop').disabled = true;
+    }
+}
+
+function renderAccounts() {
+    const container = document.getElementById('accountsContainer');
+    if (!selectedPair) { container.innerHTML = ''; return; }
+    
+    // Save scroll positions before re-render
+    const scrollPositions = {};
+    container.querySelectorAll('.trades-tbl, .activity-panel').forEach(el => {
+        if (el.id || el.parentElement.id) {
+            const key = el.id || el.parentElement.id;
+            scrollPositions[key] = el.scrollTop;
+        }
+    });
+    
+    const children = selectedPair.children || [];
+    const masterTrades = tradeData.master || [];
+    const masterPnl = masterTrades.reduce((s, t) => s + (t.profit || 0), 0);
+    const masterActivities = tradeData.activities?.master || [];
+    const closedMaster = tradeData.closed_master || [];
+    
+    let html = buildCard('master', 'master', selectedPair.master_account, tradeData.balance || 0, tradeData.equity || 0, masterTrades, masterPnl, isRunning, masterActivities, closedMaster);
+    
+    if (children.length > 0) {
+        for (let i = 0; i < children.length; i++) {
+            const child = children[i];
+            const childId = child.id;
+            const childTrades = tradeData.children?.[childId] || [];
+            const childInfo = tradeData.child_data?.[childId] || {};
+            const childPnl = childTrades.reduce((s, t) => s + (t.profit || 0), 0);
+            const childActivities = tradeData.activities?.[childId] || [];
+            const closedChild = tradeData.closed_children?.[childId] || [];
+            const childConnected = isRunning && child.enabled;
+            html += buildCard('child_' + i, 'child', child.account, childInfo.balance || 0, childInfo.equity || 0, childTrades, childPnl, childConnected, childActivities, closedChild);
+        }
+    } else {
+        html += '<div class="acc-card child"><div class="empty-msg">No child accounts</div></div>';
+    }
+    container.innerHTML = html;
+    for (const cardId in activeTab) switchTab(cardId, activeTab[cardId]);
+    
+    // Restore scroll positions after re-render
+    setTimeout(() => {
+        container.querySelectorAll('.trades-tbl, .activity-panel').forEach(el => {
+            if (el.id || el.parentElement.id) {
+                const key = el.id || el.parentElement.id;
+                if (scrollPositions[key] !== undefined) {
+                    el.scrollTop = scrollPositions[key];
+                }
+            }
+        });
+    }, 0);
+}
+
+function buildCard(cardId, type, account, balance, equity, trades, pnl, connected, activities, closedTrades) {
+    const pnlClass = pnl >= 0 ? 'pos' : 'neg';
+    const currentTab = activeTab[cardId] || 'live';
+    let html = '<div class="acc-card ' + type + '" id="card_' + cardId + '">';
+    html += '<div class="acc-header"><div class="acc-info"><span class="acc-badge ' + type + '">' + type.toUpperCase() + '</span><span class="acc-num">' + account + '</span></div>';
+    html += '<div style="display:flex;align-items:center;gap:8px;">';
+    html += '<button class="date-filter-btn" onclick="toggleDateFilter(event, \'' + cardId + '\')" title="Filter by date"><i class="fas fa-calendar-alt"></i><span id="filter_label_' + cardId + '">All</span></button>';
+    html += '<div class="acc-status ' + (connected ? 'on' : 'off') + '"><i class="fas fa-circle"></i> ' + (connected ? 'On' : 'Off') + '</div></div></div>';
+    html += '<div class="date-filter-popup" id="datefilter_' + cardId + '">';
+    html += '<div class="filter-presets">';
+    html += '<button class="filter-preset active" onclick="applyDatePreset(\'' + cardId + '\', \'all\')">All</button>';
+    html += '<button class="filter-preset" onclick="applyDatePreset(\'' + cardId + '\', \'today\')">Today</button>';
+    html += '<button class="filter-preset" onclick="applyDatePreset(\'' + cardId + '\', \'yesterday\')">Yesterday</button>';
+    html += '<button class="filter-preset" onclick="applyDatePreset(\'' + cardId + '\', \'week\')">This Week</button>';
+    html += '</div>';
+    html += '<div class="date-range-inputs"><input type="date" class="date-input" id="from_' + cardId + '" placeholder="From"><input type="date" class="date-input" id="to_' + cardId + '" placeholder="To"></div>';
+    html += '<button class="filter-apply-btn" onclick="applyCustomDateRange(\'' + cardId + '\')"><i class="fas fa-filter"></i> Apply Range</button>';
+    html += '</div>';
+    html += '<div class="bal-row"><div><div class="bal-label">Balance</div><div class="bal-value">$' + formatMoney(balance) + '</div></div>';
+    html += '<div><div class="bal-label">Equity</div><div class="bal-value">$' + formatMoney(equity) + '</div></div></div>';
+    html += '<div class="acc-tabs">';
+    html += '<button class="tab-btn ' + (currentTab === 'live' ? 'active' : '') + '" onclick="switchTab(\'' + cardId + '\', \'live\')">Live (' + trades.length + ')</button>';
+    html += '<button class="tab-btn ' + (currentTab === 'closed' ? 'active' : '') + '" onclick="switchTab(\'' + cardId + '\', \'closed\')">Closed (' + filterTradesByDate(closedTrades || [], cardId).length + ')</button>';
+    html += '<button class="tab-btn ' + (currentTab === 'activity' ? 'active' : '') + '" onclick="switchTab(\'' + cardId + '\', \'activity\')">Activity</button></div>';
+    
+    // Live trades
+    html += '<div class="tab-panel ' + (currentTab === 'live' ? 'show' : '') + '" id="' + cardId + '_live"><div class="trades-tbl">';
+    html += '<div class="tbl-head"><span>Symbol</span><span>Type</span><span>Lots</span><span>Price</span><span style="text-align:right">P/L</span></div>';
+    if (trades.length > 0) {
+        trades.forEach(t => {
+            const dir = t.type === 0 ? 'buy' : 'sell';
+            const pc = (t.profit || 0) >= 0 ? 'pos' : 'neg';
+            const ps = (t.profit || 0) >= 0 ? '+' : '';
+            html += '<div class="tbl-row"><span class="t-sym">' + (t.symbol || 'N/A') + '</span><span class="t-type ' + dir + '">' + dir.toUpperCase() + '</span>';
+            html += '<span class="t-lots">' + (t.volume || 0).toFixed(2) + '</span><span class="t-price">' + (t.price_open || 0) + '</span>';
+            html += '<span class="t-pnl ' + pc + '">' + ps + '$' + (t.profit || 0).toFixed(2) + '</span></div>';
+        });
+    } else { html += '<div class="empty-msg">No open positions</div>'; }
+    html += '</div></div>';
+    
+    // Closed trades
+    html += '<div class="tab-panel ' + (currentTab === 'closed' ? 'show' : '') + '" id="' + cardId + '_closed"><div class="trades-tbl">';
+    html += '<div class="tbl-head"><span>Symbol</span><span>Type</span><span>Lots</span><span>Close</span><span style="text-align:right">P/L</span></div>';
+    if (closedTrades && closedTrades.length > 0) {
+        filterTradesByDate(closedTrades || [], cardId).forEach(t => {
+            const dir = t.type === 0 ? 'buy' : 'sell';
+            const pc = (t.profit || 0) >= 0 ? 'pos' : 'neg';
+            const ps = (t.profit || 0) >= 0 ? '+' : '';
+            html += '<div class="tbl-row"><span class="t-sym">' + (t.symbol || 'N/A') + '</span><span class="t-type ' + dir + '">' + dir.toUpperCase() + '</span>';
+            html += '<span class="t-lots">' + (t.volume || 0).toFixed(2) + '</span><span class="t-price">' + (t.close_price || t.price || 0) + '</span>';
+            html += '<span class="t-pnl ' + pc + '">' + ps + '$' + (t.profit || 0).toFixed(2) + '</span></div>';
+        });
+    } else { html += '<div class="empty-msg">No closed trades today</div>'; }
+    html += '</div></div>';
+    
+    // Activity
+    html += '<div class="tab-panel ' + (currentTab === 'activity' ? 'show' : '') + '" id="' + cardId + '_activity"><div class="activity-panel">';
+    if (activities.length > 0) {
+        activities.slice(0, 20).forEach(a => {
+            const icon = { TRADE: 'arrow-up', CLOSE: 'arrow-down', SIGNAL: 'bolt', INFO: 'info-circle', ERROR: 'exclamation-triangle' }[a.type] || 'info-circle';
+            html += '<div class="activity-item"><span class="activity-time">' + (a.time || '') + '</span>';
+            html += '<span class="activity-icon ' + (a.type || 'INFO') + '"><i class="fas fa-' + icon + '"></i></span>';
+            html += '<span class="activity-msg">' + (a.message || '') + '</span></div>';
+        });
+    } else { html += '<div class="empty-msg">No activity</div>'; }
+    html += '</div></div>';
+    
+    html += '<div class="total-row"><span class="total-lbl">Floating P/L</span><span class="total-val ' + pnlClass + '">' + (pnl >= 0 ? '+' : '') + '$' + Math.abs(pnl).toFixed(2) + '</span></div></div>';
+    return html;
+}
+
+function switchTab(cardId, tabName) {
+    activeTab[cardId] = tabName;
+    const card = document.getElementById('card_' + cardId);
+    if (!card) return;
+    card.querySelectorAll('.tab-btn').forEach((btn, i) => btn.className = 'tab-btn' + (i === ['live','closed','activity'].indexOf(tabName) ? ' active' : ''));
+    card.querySelectorAll('.tab-panel').forEach(p => p.className = 'tab-panel');
+    const panel = document.getElementById(cardId + '_' + tabName);
+    if (panel) panel.className = 'tab-panel show';
+}
+
+function formatMoney(val) { return (val || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}); }
+
+function updateStats() {
+    const totalPnl = (tradeData.master || []).reduce((s, t) => s + (t.profit || 0), 0);
+    
+    // Update overview cards
+    document.getElementById('totalCopied').textContent = globalStats.total || 0;
+    
+    const profitEl = document.getElementById('totalProfit');
+    profitEl.textContent = (totalPnl >= 0 ? '+' : '-') + '$' + Math.abs(totalPnl).toFixed(2);
+    profitEl.className = 'overview-value ' + (totalPnl >= 0 ? 'green' : 'red');
+    
+    const profitStatus = document.getElementById('profitStatus');
+    if (totalPnl > 0) {
+        profitStatus.textContent = 'Profit';
+        profitStatus.className = 'overview-badge active';
+    } else if (totalPnl < 0) {
+        profitStatus.textContent = 'Loss';
+        profitStatus.className = 'overview-badge inactive';
+    } else {
+        profitStatus.textContent = 'Neutral';
+        profitStatus.className = 'overview-badge neutral';
+    }
+}
+
+async function startCopier() {
+    document.getElementById('btnStart').disabled = true;
+    await fetch('/api/pairs/' + selectedPairId + '/start', { method: 'POST' });
+    setTimeout(loadData, 500);
+}
+
+async function stopCopier() {
+    document.getElementById('btnStop').disabled = true;
+    await fetch('/api/pairs/' + selectedPairId + '/stop', { method: 'POST' });
+    setTimeout(loadData, 500);
+}
+
+
+// Date filter state
+const dateFilters = {};
+
+function toggleDateFilter(event, cardId) {
+    event.stopPropagation();
+    const popup = document.getElementById('datefilter_' + cardId);
+    document.querySelectorAll('.date-filter-popup').forEach(p => {
+        if (p.id !== 'datefilter_' + cardId) p.classList.remove('show');
+    });
+    popup.classList.toggle('show');
+}
+
+function applyDatePreset(cardId, preset) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    let fromDate = null;
+    let toDate = new Date();
+    toDate.setHours(23, 59, 59, 999);
+    
+    switch(preset) {
+        case 'all':
+            fromDate = null;
+            toDate = null;
+            break;
+        case 'today':
+            fromDate = today;
+            break;
+        case 'yesterday':
+            fromDate = new Date(today);
+            fromDate.setDate(fromDate.getDate() - 1);
+            toDate = new Date(today);
+            toDate.setMilliseconds(-1);
+            break;
+        case 'week':
+            fromDate = new Date(today);
+            fromDate.setDate(fromDate.getDate() - 7);
+            break;
+    }
+    
+    dateFilters[cardId] = { from: fromDate, to: toDate, preset: preset };
+    
+    const label = document.getElementById('filter_label_' + cardId);
+    if (label) label.textContent = preset.charAt(0).toUpperCase() + preset.slice(1);
+    
+    const popup = document.getElementById('datefilter_' + cardId);
+    popup.querySelectorAll('.filter-preset').forEach(btn => {
+        btn.classList.toggle('active', btn.textContent.toLowerCase() === preset);
+    });
+    
+    popup.classList.remove('show');
+    renderAccounts();
+}
+
+function applyCustomDateRange(cardId) {
+    const fromInput = document.getElementById('from_' + cardId);
+    const toInput = document.getElementById('to_' + cardId);
+    
+    let fromDate = fromInput.value ? new Date(fromInput.value) : null;
+    let toDate = toInput.value ? new Date(toInput.value) : null;
+    
+    if (fromDate) fromDate.setHours(0, 0, 0, 0);
+    if (toDate) toDate.setHours(23, 59, 59, 999);
+    
+    dateFilters[cardId] = { from: fromDate, to: toDate, preset: 'custom' };
+    
+    const label = document.getElementById('filter_label_' + cardId);
+    if (label) {
+        if (fromDate && toDate) {
+            label.textContent = fromDate.toLocaleDateString('en-US', {month:'short', day:'numeric'}) + '-' + toDate.toLocaleDateString('en-US', {month:'short', day:'numeric'});
+        } else if (fromDate) {
+            label.textContent = 'From ' + fromDate.toLocaleDateString('en-US', {month:'short', day:'numeric'});
+        } else if (toDate) {
+            label.textContent = 'To ' + toDate.toLocaleDateString('en-US', {month:'short', day:'numeric'});
+        }
+    }
+    
+    const popup = document.getElementById('datefilter_' + cardId);
+    popup.querySelectorAll('.filter-preset').forEach(btn => btn.classList.remove('active'));
+    
+    popup.classList.remove('show');
+    renderAccounts();
+}
+
+function filterTradesByDate(trades, cardId) {
+    const filter = dateFilters[cardId];
+    if (!filter || (!filter.from && !filter.to)) return trades;
+    
+    return trades.filter(t => {
+        if (!t.close_time) return true;
+        const tradeDate = new Date(t.close_time * 1000);
+        if (filter.from && tradeDate < filter.from) return false;
+        if (filter.to && tradeDate > filter.to) return false;
+        return true;
+    });
+}
+
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('.date-filter-btn') && !e.target.closest('.date-filter-popup')) {
+        document.querySelectorAll('.date-filter-popup').forEach(p => p.classList.remove('show'));
+    }
+});
+
+loadPairs();
+setInterval(loadData, 1000);
+</script>
+{% endblock %}
+
+
+
+
+

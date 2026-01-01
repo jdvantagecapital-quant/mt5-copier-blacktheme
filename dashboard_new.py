@@ -1,4 +1,4 @@
-"""
+﻿"""
 MT5 Trade Copier Dashboard - Multi-Process Architecture
 Supports multiple pairs with multiple children per pair
 
@@ -538,9 +538,7 @@ def create_app(process_manager):
             })
         
         return jsonify(result)
-
     
-
     @app.route('/api/process-status')
     @login_required
     def get_process_status():
@@ -816,155 +814,365 @@ def create_app(process_manager):
         if password:
             return jsonify({'success': True, 'password': password})
         return jsonify({'success': False, 'error': 'Failed to reset password'})
-    # API Route - Get Live Trades for a pair
+    
     @app.route('/api/pairs/<pair_id>/trades')
     @login_required
     def get_pair_trades(pair_id):
-        """Read live trades, account info and activities from shared memory file"""
+        """Get live trades from shared memory (binary struct format)"""
+        import mmap
+        import struct
+        import os
+        from datetime import datetime
+        
+        # Get date filter parameters
+        date_from = request.args.get('date_from', None)
+        date_to = request.args.get('date_to', None)
+        
+        # Helper function to check if trade is within date range
+        def is_in_date_range(trade_time_str):
+            if not date_from and not date_to:
+                return True
+            try:
+                if ' ' in str(trade_time_str):
+                    trade_date = str(trade_time_str).split(' ')[0]
+                else:
+                    trade_date = str(trade_time_str)[:10]
+                if date_from and trade_date < date_from:
+                    return False
+                if date_to and trade_date > date_to:
+                    return False
+                return True
+            except:
+                return True
+        
         result = {'master': [], 'children': {}, 'balance': 0, 'equity': 0, 'child_data': {}, 'activities': {'master': []}, 'closed_master': [], 'closed_children': {}}
         
+        config = load_config()
+        pair = next((p for p in config.get('pairs', []) if p.get('id') == pair_id), None)
+        
+        if not pair:
+            return jsonify(result)
+        
+        data_dir = os.path.join(os.getenv('LOCALAPPDATA'), 'JD_MT5_TradeCopier', 'data')
+        
         # Read master positions from shared memory
-        shared_file = os.path.join(DATA_DIR, 'data', f'shared_positions_{pair_id}.bin')
-        if os.path.exists(shared_file):
-            try:
-                with open(shared_file, 'rb') as f:
-                    data = f.read()
-                    # New format: timestamp(8) + balance(8) + equity(8) + count(4) = 28 bytes header
-                    if len(data) >= 28:
-                        timestamp = struct.unpack('<Q', data[:8])[0]
-                        balance = struct.unpack('<d', data[8:16])[0]
-                        equity = struct.unpack('<d', data[16:24])[0]
-                        count = struct.unpack('<I', data[24:28])[0]
+        try:
+            shared_file = os.path.join(data_dir, f'shared_positions_{pair_id}.bin')
+            
+            if os.path.exists(shared_file) and os.path.getsize(shared_file) >= 28:
+                with open(shared_file, 'r+b') as f:
+                    with mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as mm:
+                        mm.seek(0)
+                        timestamp = struct.unpack('<Q', mm.read(8))[0]
+                        balance = struct.unpack('<d', mm.read(8))[0]
+                        equity = struct.unpack('<d', mm.read(8))[0]
+                        count = struct.unpack('<I', mm.read(4))[0]
                         
                         result['balance'] = round(balance, 2)
                         result['equity'] = round(equity, 2)
                         
-                        positions = []
-                        offset = 28
-                        # Position format: ticket(8) + type(1) + volume(8) + sl(8) + tp(8) + symbol(15) + price_open(8) + profit(8) = 64 bytes
-                        POSITION_SIZE = 64
                         for i in range(min(count, 50)):
-                            if offset + POSITION_SIZE <= len(data):
-                                ticket = struct.unpack('<Q', data[offset:offset+8])[0]
-                                trade_type = struct.unpack('<B', data[offset+8:offset+9])[0]
-                                volume = struct.unpack('<d', data[offset+9:offset+17])[0]
-                                sl = struct.unpack('<d', data[offset+17:offset+25])[0]
-                                tp = struct.unpack('<d', data[offset+25:offset+33])[0]
-                                symbol = data[offset+33:offset+48].decode('utf-8').rstrip('\x00')
-                                price_open = struct.unpack('<d', data[offset+48:offset+56])[0]
-                                profit = struct.unpack('<d', data[offset+56:offset+64])[0]
+                            try:
+                                ticket = struct.unpack('<Q', mm.read(8))[0]
+                                pos_type = struct.unpack('<B', mm.read(1))[0]
+                                volume = struct.unpack('<d', mm.read(8))[0]
+                                sl = struct.unpack('<d', mm.read(8))[0]
+                                tp = struct.unpack('<d', mm.read(8))[0]
+                                symbol = mm.read(15).decode('utf-8', errors='ignore').rstrip('\x00')
+                                price_open = struct.unpack('<d', mm.read(8))[0]
+                                profit = struct.unpack('<d', mm.read(8))[0]
                                 
-                                if ticket > 0:
-                                    positions.append({
-                                        'ticket': ticket,
-                                        'symbol': symbol,
-                                        'type': trade_type,
-                                        'volume': round(volume, 2),
-                                        'price_open': round(price_open, 5),
-                                        'profit': round(profit, 2)
-                                    })
-                                offset += POSITION_SIZE
-                        result['master'] = positions
+                                result['master'].append({
+                                    'ticket': ticket, 'symbol': symbol, 'type': pos_type,
+                                    'volume': volume, 'sl': sl, 'tp': tp,
+                                    'price_open': price_open, 'profit': round(profit, 2)
+                                })
+                            except:
+                                break
+        except Exception as e:
+            print(f"[WARN] Error reading master shared memory: {e}")
+        
+        # Read closed master trades with date filtering
+        try:
+            closed_file = os.path.join(data_dir, f'closed_trades_{pair_id}.json')
+            if os.path.exists(closed_file):
+                with open(closed_file, 'r') as f:
+                    all_closed = json.load(f)
+                    complete_trades = []
+                    for t in all_closed:
+                        if t.get('close_price') and t.get('close_time'):
+                            if is_in_date_range(t.get('close_time', '')):
+                                t['close_price'] = round(t.get('close_price', 0), 5)
+                                t['price_open'] = round(t.get('price_open', 0), 5)
+                                t['profit'] = round(t.get('profit', 0), 2)
+                                complete_trades.append(t)
+                    result['closed_master'] = complete_trades
+        except:
+            pass
+        
+        # Read master activities from JSON log
+        try:
+            logs_dir = os.path.join(os.getenv('LOCALAPPDATA'), 'JD_MT5_TradeCopier', 'logs')
+            master_activity_file = os.path.join(logs_dir, f'master_activity_{pair_id}.json')
+            
+            if os.path.exists(master_activity_file):
+                with open(master_activity_file, 'r', encoding='utf-8') as f:
+                    activities = json.load(f)
+                    # Activities already in correct format: {time, date, message, type}
+                    for act in activities[:20]:
+                        result['activities']['master'].append({
+                            'time': f"{act.get('date', '')} {act.get('time', '')}",
+                            'message': act.get('message', ''),
+                            'type': act.get('type', 'INFO')
+                        })
+        except Exception as e:
+            print(f"[WARN] Error reading master activity: {e}")
+        
+        # Read child data
+        for child in pair.get('children', []):
+            child_id = child.get('id')
+            result['children'][child_id] = []
+            result['activities'][child_id] = []
+            result['closed_children'][child_id] = []
+            result['child_data'][child_id] = {'balance': 0, 'equity': 0}
+            
+            # Read child data from binary struct format
+            try:
+                child_file = os.path.join(data_dir, f'child_data_{pair_id}_{child_id}.bin')
+                
+                if os.path.exists(child_file) and os.path.getsize(child_file) >= 28:
+                    with open(child_file, 'rb') as f:
+                        data = f.read()
+                        timestamp = struct.unpack('<Q', data[0:8])[0]
+                        balance = struct.unpack('<d', data[8:16])[0]
+                        equity = struct.unpack('<d', data[16:24])[0]
+                        count = struct.unpack('<I', data[24:28])[0]
+                        
+                        result['child_data'][child_id] = {'balance': round(balance, 2), 'equity': round(equity, 2)}
+                        
+                        offset = 28
+                        positions = []
+                        for i in range(min(count, 50)):
+                            if offset + 64 > len(data):
+                                break
+                            ticket = struct.unpack('<Q', data[offset:offset+8])[0]
+                            pos_type = struct.unpack('<B', data[offset+8:offset+9])[0]
+                            volume = struct.unpack('<d', data[offset+9:offset+17])[0]
+                            sl = struct.unpack('<d', data[offset+17:offset+25])[0]
+                            tp = struct.unpack('<d', data[offset+25:offset+33])[0]
+                            symbol = data[offset+33:offset+48].decode('utf-8', errors='ignore').rstrip(chr(0))
+                            price_open = struct.unpack('<d', data[offset+48:offset+56])[0]
+                            profit = struct.unpack('<d', data[offset+56:offset+64])[0]
+                            
+                            positions.append({
+                                'ticket': ticket, 'symbol': symbol, 'type': pos_type,
+                                'volume': volume, 'sl': sl, 'tp': tp,
+                                'price_open': price_open, 'profit': round(profit, 2)
+                            })
+                            offset += 64
+                        result['children'][child_id] = positions
             except Exception as e:
-                print(f"Error reading shared file: {e}")
-        
-        # Load closed trades from history files
-        closed_master_file = os.path.join(DATA_DIR, 'data', f'closed_trades_{pair_id}.json')
-        if os.path.exists(closed_master_file):
+                print(f"[WARN] Error reading child {child_id}: {e}")
+            
+            # Read child activities from log file
             try:
-                with open(closed_master_file, 'r') as cmf:
-                    result['closed_master'] = json.load(cmf)[:20]
+                logs_dir = os.path.join(os.getenv('LOCALAPPDATA'), 'JD_MT5_TradeCopier', 'logs')
+                log_file = os.path.join(logs_dir, f'child_{pair_id}_{child_id}.log')
+                
+                if os.path.exists(log_file):
+                    with open(log_file, 'r', encoding='utf-8', errors='ignore') as f:
+                        lines = f.readlines()[-50:]
+                        for line in reversed(lines):
+                            if any(tag in line for tag in ['[SIGNAL]', '[OPEN]', '[CLOSE]', '[ERROR]', '[WARN]', '[INFO]']):
+                                # Parse log level
+                                log_type = 'INFO'
+                                if '[CLOSE]' in line: log_type = 'CLOSE'
+                                elif '[SIGNAL]' in line: log_type = 'SIGNAL'
+                                elif '[OPEN]' in line: log_type = 'TRADE'
+                                elif '[ERROR]' in line: log_type = 'ERROR'
+                                elif '[WARN]' in line: log_type = 'WARN'
+                                
+                                result['activities'][child_id].append({
+                                    'time': line[1:20] if len(line) > 20 else '',
+                                    'message': line.strip(),
+                                    'type': log_type
+                                })
+                            if len(result['activities'][child_id]) >= 20:
+                                break
             except:
                 pass
-        
-        # Load master activity logs
-        master_log_file = os.path.join(DATA_DIR, 'logs', f'master_activity_{pair_id}.json')
-        if os.path.exists(master_log_file):
+            
+            # Read child closed trades with date filtering
             try:
-                with open(master_log_file, 'r') as mf:
-                    result['activities']['master'] = json.load(mf)[:20]
-            except:
-                pass
-        
-        # Read child data from shared memory files
-        config = load_config()
-        pair = next((p for p in config.get('pairs', []) if p.get('id') == pair_id), None)
-        if pair:
-            for child in pair.get('children', []):
-                child_id = child.get('id')
-                result['activities'][child_id] = []
-                
-                # Read child shared memory file
-                child_shared_file = os.path.join(DATA_DIR, 'data', f'child_data_{pair_id}_{child_id}.bin')
-                if os.path.exists(child_shared_file):
-                    try:
-                        with open(child_shared_file, 'rb') as cf:
-                            cdata = cf.read()
-                            if len(cdata) >= 28:
-                                c_balance = struct.unpack('<d', cdata[8:16])[0]
-                                c_equity = struct.unpack('<d', cdata[16:24])[0]
-                                c_count = struct.unpack('<I', cdata[24:28])[0]
-                                
-                                result['child_data'][child_id] = {
-                                    'balance': round(c_balance, 2),
-                                    'equity': round(c_equity, 2)
-                                }
-                                
-                                # Read child positions
-                                child_positions = []
-                                c_offset = 28
-                                POSITION_SIZE = 64
-                                for i in range(min(c_count, 50)):
-                                    if c_offset + POSITION_SIZE <= len(cdata):
-                                        c_ticket = struct.unpack('<Q', cdata[c_offset:c_offset+8])[0]
-                                        c_type = struct.unpack('<B', cdata[c_offset+8:c_offset+9])[0]
-                                        c_volume = struct.unpack('<d', cdata[c_offset+9:c_offset+17])[0]
-                                        c_sl = struct.unpack('<d', cdata[c_offset+17:c_offset+25])[0]
-                                        c_tp = struct.unpack('<d', cdata[c_offset+25:c_offset+33])[0]
-                                        c_symbol = cdata[c_offset+33:c_offset+48].decode('utf-8').rstrip('\x00')
-                                        c_price = struct.unpack('<d', cdata[c_offset+48:c_offset+56])[0]
-                                        c_profit = struct.unpack('<d', cdata[c_offset+56:c_offset+64])[0]
-                                        
-                                        if c_ticket > 0:
-                                            child_positions.append({
-                                                'ticket': c_ticket,
-                                                'symbol': c_symbol,
-                                                'type': c_type,
-                                                'volume': round(c_volume, 2),
-                                                'price_open': round(c_price, 5),
-                                                'profit': round(c_profit, 2)
-                                            })
-                                        c_offset += POSITION_SIZE
-                                result['children'][child_id] = child_positions
-                    except Exception as ce:
-                        print(f"Error reading child data: {ce}")
-                        result['children'][child_id] = []
-                        result['child_data'][child_id] = {'balance': 0, 'equity': 0}
-                else:
-                    result['children'][child_id] = []
-                    result['child_data'][child_id] = {'balance': 0, 'equity': 0}
-                
-                # Load child activity logs
-                child_log_file = os.path.join(DATA_DIR, 'logs', f'activity_log_{pair_id}_{child_id}.json')
-                if os.path.exists(child_log_file):
-                    try:
-                        with open(child_log_file, 'r') as clf:
-                            result['activities'][child_id] = json.load(clf)[:20]
-                    except:
-                        pass
-                
-                # Load child closed trades
-                child_closed_file = os.path.join(DATA_DIR, 'data', f'closed_trades_{pair_id}_{child_id}.json')
+                child_closed_file = os.path.join(data_dir, f'closed_trades_{pair_id}_{child_id}.json')
                 if os.path.exists(child_closed_file):
-                    try:
-                        with open(child_closed_file, 'r') as ccf:
-                            result['closed_children'][child_id] = json.load(ccf)[:20]
-                    except:
-                        result['closed_children'][child_id] = []
-                else:
-                    result['closed_children'][child_id] = []
+                    with open(child_closed_file, 'r') as f:
+                        child_closed = json.load(f)
+                        filtered_closed = []
+                        for t in child_closed:
+                            if is_in_date_range(t.get('close_time', '')):
+                                t['close_price'] = round(t.get('close_price', 0), 5)
+                                t['price_open'] = round(t.get('price_open', 0), 5)
+                                t['profit'] = round(t.get('profit', 0), 2)
+                                filtered_closed.append(t)
+                        result['closed_children'][child_id] = filtered_closed
+            except:
+                pass
         
         return jsonify(result)
+
+    @app.route('/api/accounts/<account_type>/<account_id>/positions')
+    @login_required
+    def get_account_positions(account_type, account_id):
+        """Get live positions directly from MT5 terminal"""
+        from mt5_data_fetcher import get_mt5_positions
+        
+        config = load_config()
+        account_info = None
+        
+        # Find account in config
+        if account_type == 'master':
+            for pair in config.get('pairs', []):
+                if pair.get('id') == account_id:
+                    account_info = {
+                        'login': pair.get('master_login'),
+                        'server': pair.get('master_server'),
+                        'password': pair.get('master_password'),
+                        'terminal': pair.get('master_terminal')
+                    }
+                    break
+        elif account_type == 'child':
+            pair_id, child_id = account_id.split('_')
+            for pair in config.get('pairs', []):
+                if pair.get('id') == pair_id:
+                    for child in pair.get('children', []):
+                        if child.get('id') == child_id:
+                            account_info = {
+                                'login': child.get('login'),
+                                'server': child.get('server'),
+                                'password': child.get('password'),
+                                'terminal': child.get('terminal')
+                            }
+                            break
+                    break
+        
+        if not account_info:
+            return jsonify({'success': False, 'error': 'Account not found'})
+        
+        result = get_mt5_positions(
+            login=account_info['login'],
+            server=account_info['server'],
+            password=account_info.get('password'),
+            terminal_path=account_info.get('terminal')
+        )
+        
+        return jsonify(result)
+    
+    @app.route('/api/accounts/<account_type>/<account_id>/history')
+    @login_required
+    def get_account_history(account_type, account_id):
+        """Get trade history directly from MT5 terminal"""
+        from mt5_data_fetcher import get_mt5_history, get_mt5_closed_orders
+        
+        days = int(request.args.get('days', 5))
+        
+        config = load_config()
+        account_info = None
+        
+        # Find account in config
+        if account_type == 'master':
+            for pair in config.get('pairs', []):
+                if pair.get('id') == account_id:
+                    account_info = {
+                        'login': pair.get('master_login'),
+                        'server': pair.get('master_server'),
+                        'password': pair.get('master_password'),
+                        'terminal': pair.get('master_terminal')
+                    }
+                    break
+        elif account_type == 'child':
+            pair_id, child_id = account_id.split('_')
+            for pair in config.get('pairs', []):
+                if pair.get('id') == pair_id:
+                    for child in pair.get('children', []):
+                        if child.get('id') == child_id:
+                            account_info = {
+                                'login': child.get('login'),
+                                'server': child.get('server'),
+                                'password': child.get('password'),
+                                'terminal': child.get('terminal')
+                            }
+                            break
+                    break
+        
+        if not account_info:
+            return jsonify({'success': False, 'error': 'Account not found'})
+        
+        # Get both deals and orders
+        deals_result = get_mt5_history(
+            login=account_info['login'],
+            server=account_info['server'],
+            password=account_info.get('password'),
+            terminal_path=account_info.get('terminal'),
+            days=days
+        )
+        
+        orders_result = get_mt5_closed_orders(
+            login=account_info['login'],
+            server=account_info['server'],
+            password=account_info.get('password'),
+            terminal_path=account_info.get('terminal'),
+            days=days
+        )
+        
+        return jsonify({
+            'success': True,
+            'deals': deals_result.get('deals', []),
+            'orders': orders_result.get('orders', []),
+            'from_date': deals_result.get('from_date'),
+            'to_date': deals_result.get('to_date')
+        })
+    
+    @app.route('/api/pairs/<pair_id>/live-data')
+    @login_required
+    def get_pair_live_data(pair_id):
+        """Get live data for all accounts in a pair"""
+        from mt5_data_fetcher import get_mt5_positions
+        
+        config = load_config()
+        pair = next((p for p in config.get('pairs', []) if p.get('id') == pair_id), None)
+        
+        if not pair:
+            return jsonify({'success': False, 'error': 'Pair not found'})
+        
+        result = {
+            'success': True,
+            'master': {},
+            'children': {}
+        }
+        
+        # Get master data
+        master_data = get_mt5_positions(
+            login=pair.get('master_login'),
+            server=pair.get('master_server'),
+            password=pair.get('master_password'),
+            terminal_path=pair.get('master_terminal')
+        )
+        result['master'] = master_data
+        
+        # Get child data
+        for child in pair.get('children', []):
+            child_id = child.get('id')
+            child_data = get_mt5_positions(
+                login=child.get('login'),
+                server=child.get('server'),
+                password=child.get('password'),
+                terminal_path=child.get('terminal')
+            )
+            result['children'][child_id] = child_data
+        
+        return jsonify(result)
+    
     @app.route('/api/shutdown', methods=['POST'])
     @login_required
     def shutdown_system():
@@ -993,6 +1201,142 @@ def create_app(process_manager):
 
 
     
+
+    @app.route('/api/pairs/<pair_id>/mt5-data')
+    @login_required
+    def get_pair_mt5_data(pair_id):
+        """Get data directly from MT5 terminals for all accounts in a pair"""
+        from mt5_data_fetcher import get_account_live_data
+        
+        # Get date filter parameters
+        date_from = request.args.get('date_from', None)
+        date_to = request.args.get('date_to', None)
+        days = int(request.args.get('days', 30))
+        
+        config = load_config()
+        pair = next((p for p in config.get('pairs', []) if p.get('id') == pair_id), None)
+        
+        if not pair:
+            return jsonify({'success': False, 'error': 'Pair not found'})
+        
+        result = {
+            'success': True,
+            'master': {
+                'balance': 0,
+                'equity': 0,
+                'positions': [],
+                'closed_trades': [],
+                'error': None
+            },
+            'children': {},
+            'child_data': {},
+            'activities': {'master': []},
+            'closed_master': [],
+            'closed_children': {}
+        }
+        
+        # Get master data directly from MT5
+        try:
+            master_result = get_account_live_data(
+                login=pair.get('master_account'),
+                server=pair.get('master_server', ''),
+                password=pair.get('master_password', ''),
+                terminal_path=pair.get('master_terminal', ''),
+                date_from=date_from,
+                date_to=date_to,
+                days=days
+            )
+            
+            if master_result.get('success'):
+                result['master']['balance'] = master_result.get('balance', 0)
+                result['master']['equity'] = master_result.get('equity', 0)
+                result['master']['positions'] = master_result.get('positions', [])
+                result['closed_master'] = master_result.get('closed_trades', [])
+            else:
+                result['master']['error'] = master_result.get('error', 'Unknown error')
+        except Exception as e:
+            result['master']['error'] = str(e)
+        
+        # Compatibility fields
+        result['balance'] = result['master']['balance']
+        result['equity'] = result['master']['equity']
+        
+        # Get master activities from log
+        try:
+            logs_dir = os.path.join(os.getenv('LOCALAPPDATA'), 'JD_MT5_TradeCopier', 'logs')
+            master_activity_file = os.path.join(logs_dir, f'master_activity_{pair_id}.json')
+            
+            if os.path.exists(master_activity_file):
+                with open(master_activity_file, 'r', encoding='utf-8') as f:
+                    activities = json.load(f)
+                    for act in activities[:20]:
+                        result['activities']['master'].append({
+                            'time': f"{act.get('date', '')} {act.get('time', '')}",
+                            'message': act.get('message', ''),
+                            'type': act.get('type', 'INFO')
+                        })
+        except:
+            pass
+        
+        # Get child data
+        for child in pair.get('children', []):
+            child_id = child.get('id')
+            result['children'][child_id] = []
+            result['activities'][child_id] = []
+            result['closed_children'][child_id] = []
+            result['child_data'][child_id] = {'balance': 0, 'equity': 0}
+            
+            try:
+                child_result = get_account_live_data(
+                    login=child.get('account'),
+                    server=child.get('server', ''),
+                    password=child.get('password', ''),
+                    terminal_path=child.get('terminal', ''),
+                    date_from=date_from,
+                    date_to=date_to,
+                    days=days
+                )
+                
+                if child_result.get('success'):
+                    result['child_data'][child_id] = {
+                        'balance': child_result.get('balance', 0),
+                        'equity': child_result.get('equity', 0)
+                    }
+                    result['children'][child_id] = child_result.get('positions', [])
+                    result['closed_children'][child_id] = child_result.get('closed_trades', [])
+            except Exception as e:
+                result['child_data'][child_id]['error'] = str(e)
+            
+            # Read child activities from log file
+            try:
+                logs_dir = os.path.join(os.getenv('LOCALAPPDATA'), 'JD_MT5_TradeCopier', 'logs')
+                log_file = os.path.join(logs_dir, f'child_{pair_id}_{child_id}.log')
+                
+                if os.path.exists(log_file):
+                    with open(log_file, 'r', encoding='utf-8', errors='ignore') as f:
+                        lines = f.readlines()[-50:]
+                        for line in reversed(lines):
+                            if any(tag in line for tag in ['[SIGNAL]', '[OPEN]', '[CLOSE]', '[ERROR]', '[WARN]', '[INFO]']):
+                                log_type = 'INFO'
+                                if '[CLOSE]' in line: log_type = 'CLOSE'
+                                elif '[SIGNAL]' in line: log_type = 'SIGNAL'
+                                elif '[OPEN]' in line: log_type = 'TRADE'
+                                elif '[ERROR]' in line: log_type = 'ERROR'
+                                elif '[WARN]' in line: log_type = 'WARN'
+                                
+                                result['activities'][child_id].append({
+                                    'time': line[1:20] if len(line) > 20 else '',
+                                    'message': line.strip(),
+                                    'type': log_type
+                                })
+                            if len(result['activities'][child_id]) >= 20:
+                                break
+            except:
+                pass
+        
+        return jsonify(result)
+
+
     return app
 
 def main():
@@ -1019,6 +1363,8 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+
 
 
 

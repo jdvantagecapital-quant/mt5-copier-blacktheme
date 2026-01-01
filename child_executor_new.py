@@ -269,6 +269,27 @@ def open_trade(symbol, trade_type, volume, sl, tp, magic, comment, log, copy_mod
     
     return False
 
+def save_child_closed_trade(pair_id, child_id, trade_data):
+    """Save closed trade to JSON file for dashboard"""
+    try:
+        data_dir = os.path.join(os.getenv('LOCALAPPDATA'), 'JD_MT5_TradeCopier', 'data')
+        closed_file = os.path.join(data_dir, f"closed_trades_{pair_id}_{child_id}.json")
+        closed_trades = []
+        if os.path.exists(closed_file):
+            try:
+                with open(closed_file, 'r') as f:
+                    closed_trades = json.load(f)
+            except:
+                closed_trades = []
+        
+        closed_trades.insert(0, trade_data)
+        closed_trades = closed_trades[:50]  # Keep last 50
+        
+        with open(closed_file, 'w') as f:
+            json.dump(closed_trades, f)
+    except Exception as e:
+        print(f"[WARN] Error saving child closed trade: {e}")
+
 def close_trade(ticket, symbol, trade_type, volume, log):
     """Close an existing position with retry logic"""
     max_retries = 3
@@ -324,7 +345,7 @@ def close_trade(ticket, symbol, trade_type, volume, log):
             if result and result.retcode == mt5.TRADE_RETCODE_DONE:
                 type_str = "BUY" if trade_type == 0 else "SELL"
                 log.log(f"CLOSED {type_str} {volume} {symbol} @ {price:.5f}", "CLOSE")
-                return True
+                return {'success': True, 'price': price, 'profit': result.profit if hasattr(result, 'profit') else 0}
             elif result and result.retcode in [mt5.TRADE_RETCODE_REQUOTE, mt5.TRADE_RETCODE_PRICE_OFF]:
                 if attempt < max_retries - 1:
                     time.sleep(0.2)
@@ -389,6 +410,22 @@ def main(pair_id, child_id):
     log.log(f"Child Account: {child_account}", "INFO")
     log.log(f"Server: {child_server}", "INFO")
     
+    
+    # Validate symbols are configured  
+    has_symbols = False
+    for i in range(1, 21):
+        master_sym = pair.get(f'master_symbol_{i}', '').strip().upper()
+        child_sym = child.get(f'child_symbol_{i}', '').strip().upper()
+        # Both must exist AND they must match
+        if master_sym and child_sym and master_sym == child_sym:
+            has_symbols = True
+            break
+    
+    if not has_symbols:
+        log.log('ERROR: No symbols configured for this pair/child!', 'ERROR')
+        log.log('Please add at least one symbol pair in the dashboard to continue.', 'ERROR')
+        log.log('Go to Accounts  Edit Pair  Add Symbol', 'ERROR')
+        return
     # Initialize MT5
     init_args = {}
     if child_terminal:
@@ -512,6 +549,22 @@ def main(pair_id, child_id):
                 
                 # Open new positions
                 for master_ticket, pos in master_now.items():
+                    # CHECK: Is this symbol in our allowed list?
+                    incoming_symbol = pos['symbol'].upper().strip()
+                    symbol_allowed = False
+                    for slot_i in range(1, 21):
+                        master_sym = pair.get(f'master_symbol_{slot_i}', '').strip().upper()
+                        child_sym = child.get(f'child_symbol_{slot_i}', '').strip().upper()
+                        if master_sym == incoming_symbol and child_sym:
+                            symbol_allowed = True
+                            log.log(f"Symbol {incoming_symbol} ALLOWED (slot {slot_i}: {master_sym}->{child_sym})", "INFO")
+                            break
+                    
+                    if not symbol_allowed:
+                        log.log(f"Symbol {incoming_symbol} NOT CONFIGURED - SKIPPING trade #{master_ticket}", "WARN")
+                        tracked_master[master_ticket] = -1  # Mark as skipped
+                        continue
+                    
                     if master_ticket not in tracked_master and master_ticket not in pending_track:
                         # On first run with force_copy disabled, skip existing positions
                         if first_run and not force_copy:
@@ -569,7 +622,20 @@ def main(pair_id, child_id):
                                 if child_pos:
                                     cp = child_pos[0]
                                     log.log(f"CLOSE SIGNAL: Master closed {cp.symbol}", "SIGNAL")
-                                    close_trade(cp.ticket, cp.symbol, cp.type, cp.volume, log)
+                                    close_result = close_trade(cp.ticket, cp.symbol, cp.type, cp.volume, log)
+                                    if close_result and close_result.get('success'):
+                                        # Save closed trade for dashboard
+                                        import datetime
+                                        save_child_closed_trade(pair_id, child_id, {
+                                            'ticket': cp.ticket,
+                                            'symbol': cp.symbol,
+                                            'type': cp.type,
+                                            'volume': cp.volume,
+                                            'price_open': cp.price_open,
+                                            'close_price': close_result.get('price', 0),
+                                            'profit': cp.profit,
+                                            'close_time': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                                        })
                             closed_tickets.append(master_ticket)
                     
                     for t in closed_tickets:
@@ -654,6 +720,10 @@ if __name__ == "__main__":
     finally:
         print("\n" + "=" * 60)
         input("Press Enter to close this window...")
+
+
+
+
 
 
 
