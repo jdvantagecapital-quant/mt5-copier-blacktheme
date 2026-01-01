@@ -1,4 +1,4 @@
-﻿"""
+"""
 MT5 Trade Copier - Child Executor (Enhanced)
 With symbol mapping, database integration, and comprehensive logging
 """
@@ -110,7 +110,7 @@ class TradeLog:
                 pass
 
 def load_config(pair_id, child_id):
-    """Load configuration for the specified pair and child"""
+    """Load configuration for the specified pair, child, and global settings"""
     try:
         with open(CONFIG_FILE, 'r', encoding='utf-8-sig') as f:
             config = json.load(f)
@@ -119,14 +119,17 @@ def load_config(pair_id, child_id):
         pair = next((p for p in pairs if p.get('id') == pair_id), None)
         
         if not pair:
-            return None, None
+            return None, None, {}
         
         children = pair.get('children', [])
         child = next((c for c in children if c.get('id') == child_id), None)
         
-        return pair, child
+        # Get global settings
+        settings = config.get('settings', {})
+        
+        return pair, child, settings
     except:
-        return None, None
+        return None, None, {}
 
 def write_child_data(pair_id, child_id, balance, equity, positions):
     """Write child account data to binary file"""
@@ -378,7 +381,7 @@ def main(pair_id, child_id):
         print("ERROR: --pair-id and --child-id arguments required!")
         return
     
-    pair, child = load_config(pair_id, child_id)
+    pair, child, global_settings = load_config(pair_id, child_id)
     if not pair or not child:
         print("ERROR: Configuration not found!")
         return
@@ -490,7 +493,7 @@ def main(pair_id, child_id):
         while True:
             try:
                 # Reload config for live changes
-                pair, child = load_config(pair_id, child_id)
+                pair, child, global_settings = load_config(pair_id, child_id)
                 if not pair or not child:
                     time.sleep(0.5)
                     continue
@@ -504,6 +507,11 @@ def main(pair_id, child_id):
                 lot_multiplier = child.get('lot_multiplier', 1.0)
                 copy_mode = child.get('copy_mode', 'normal')
                 copy_close = child.get('copy_close', True)
+                
+                # Get global copy settings (default to True for SL/TP, False for pending)
+                copy_sl = global_settings.get('copy_sl', True)
+                copy_tp = global_settings.get('copy_tp', True)
+                copy_pending = global_settings.get('copy_pending', False)
                 
                 # Update database every 10 seconds
                 current_time = time.time()
@@ -584,12 +592,16 @@ def main(pair_id, child_id):
                         type_str = "BUY" if pos['type'] == 0 else "SELL"
                         log.log(f"NEW SIGNAL: {type_str} {pos['symbol']} {pos['volume']} lots from master", "SIGNAL")
                         
+                        # Apply SL/TP based on global settings
+                        sl_to_copy = pos['sl'] if copy_sl else 0
+                        tp_to_copy = pos['tp'] if copy_tp else 0
+                        
                         success = open_trade(
                             pos['symbol'], 
                             pos['type'], 
                             child_volume,
-                            pos['sl'],
-                            pos['tp'],
+                            sl_to_copy,
+                            tp_to_copy,
                             master_ticket,
                             f"copy_{master_ticket}",
                             log,

@@ -1,4 +1,4 @@
-﻿{% extends "base.html" %}
+{% extends "base.html" %}
 {% block title %}Account Management - MT5 Trade Copier{% endblock %}
 {% block page_title %}<i class="fas fa-users-cog"></i> Account Management{% endblock %}
 
@@ -148,6 +148,11 @@
     .toast-msg.success { background: #0a1a0a; border-color: #00cc6a; color: #00cc6a; box-shadow: 0 0 20px rgba(0,204,106,0.3); }
     .toast-msg.error { background: #1a0a0a; border-color: #ff4466; color: #ff4466; box-shadow: 0 0 20px rgba(255,68,102,0.3); }
     html[data-theme="light"] .page-title { font-size: 12px !important; font-weight: 600 !important; color: var(--text-muted) !important; text-transform: none !important; letter-spacing: 0 !important; flex-shrink: 0 !important; } html[data-theme="light"] .acct-server { color: #555 !important; } html[data-theme="light"] .acct-login { color: #1a1a1a !important; } html[data-theme="light"] .add-btn { padding: 10px 18px !important; background: var(--bg-card) !important; color: var(--text-secondary) !important; border: 1px solid var(--border) !important; border-radius: 999px !important; font-size: 13px !important; font-weight: 600 !important; cursor: pointer !important; display: flex !important; align-items: center !important; gap: 8px !important; transition: all 0.2s !important; width: fit-content !important; margin-left: auto !important; }
+
+/* Calendar icon visibility fix for both themes */
+.form-input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.5); cursor: pointer; opacity: 0.8; padding: 2px; }
+.form-input[type="date"]::-webkit-calendar-picker-indicator:hover { opacity: 1; }
+html[data-theme="light"] .form-input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.2); opacity: 1; }
 </style>
 {% endblock %}
 
@@ -226,10 +231,13 @@
                     <div class="form-section-title settings">Copy Settings</div>
                     <div class="form-grid copy-grid">
                         <div class="form-group"><label class="form-label"><i class="fas fa-percentage"></i> Lot Multiplier</label><input type="number" class="form-input" name="lot_multiplier" id="childLotMultiplier" value="1.0" step="0.01" min="0.01"><span class="form-hint">Multiply master lot</span></div>
-                        <div class="form-group"><label class="form-label"><i class="fas fa-copy"></i> Copy Mode</label><select class="form-select" name="copy_mode" id="childCopyMode"><option value="normal">Normal</option><option value="reverse">Reverse</option><option value="fixed">Fixed Lot</option></select></div>
+                        <div class="form-group"><label class="form-label"><i class="fas fa-copy"></i> Copy Mode</label><select class="form-select" name="copy_mode" id="childCopyMode"><option value="normal">Normal</option><option value="reverse">Reverse</option><option value="only_buy">Only Buy</option><option value="only_sell">Only Sell</option></select></div>
                         <div class="form-group"><label class="form-label"><i class="fas fa-toggle-on"></i> Copy Close</label><select class="form-select" name="copy_close" id="childCopyClose"><option value="true">Yes</option><option value="false">No</option></select></div>
                         
-                        <div class="form-group"><label class="form-label"><i class="fas fa-bolt"></i> Force Copy</label><select class="form-select" name="force_copy" id="childForceCopy"><option value="false">Disabled</option><option value="true">Enabled</option></select><span class="form-hint">Force execution even on errors</span></div>
+                        <div class="form-group"><label class="form-label"><i class="fas fa-bolt"></i> Force Copy</label><select class="form-select" name="force_copy" id="childForceCopy"><option value="false">Disabled</option><option value="true">Enabled</option></select><span class="form-hint">Force on errors</span></div>
+                        <div class="form-group"><label class="form-label"><i class="fas fa-shield-alt"></i> Copy SL</label><select class="form-select" name="copy_sl" id="childCopySL"><option value="true">Yes</option><option value="false">No</option></select><span class="form-hint">Copy Stop Loss</span></div>
+                        <div class="form-group"><label class="form-label"><i class="fas fa-bullseye"></i> Copy TP</label><select class="form-select" name="copy_tp" id="childCopyTP"><option value="true">Yes</option><option value="false">No</option></select><span class="form-hint">Copy Take Profit</span></div>
+                        <div class="form-group"><label class="form-label"><i class="fas fa-clock"></i> Copy Pending</label><select class="form-select" name="copy_pending" id="childCopyPending"><option value="false">No</option><option value="true">Yes</option></select><span class="form-hint">Copy pending orders</span></div>
                     </div>
                 </div>
                 <div class="form-section">
@@ -387,6 +395,9 @@ function openChildModal(pairId) {
     document.getElementById('childCopyMode').value = 'normal';
     document.getElementById('childCopyClose').value = 'true';
     document.getElementById('childForceCopy').value = 'false';
+    document.getElementById('childCopySL').value = 'true';
+    document.getElementById('childCopyTP').value = 'true';
+    document.getElementById('childCopyPending').value = 'true';
     document.getElementById('childSymbol').value = '';
     document.getElementById('childModal').classList.add('active'); 
 }
@@ -409,6 +420,9 @@ function openEditChildModal(pairId, childId) {
     document.getElementById('childCopyMode').value = child.copy_mode || 'normal';
     document.getElementById('childCopyClose').value = child.copy_close !== false ? 'true' : 'false';
     document.getElementById('childForceCopy').value = child.force_copy === true ? 'true' : 'false';
+    document.getElementById('childCopySL').value = child.copy_sl !== false ? 'true' : 'false';
+    document.getElementById('childCopyTP').value = child.copy_tp !== false ? 'true' : 'false';
+    document.getElementById('childCopyPending').value = child.copy_pending !== false ? 'true' : 'false';
     for(let i=1; i<=5; i++) {
         const field = document.getElementById('childSymbol' + i);
         if(field) field.value = child['child_symbol_' + i] || '';
@@ -504,6 +518,9 @@ async function saveChild() {
     if (data.lot_multiplier) data.lot_multiplier = parseFloat(data.lot_multiplier) || 1.0;
     if (data.copy_close) data.copy_close = data.copy_close === 'true';
     if (data.force_copy) data.force_copy = data.force_copy === 'true';
+    if (data.copy_sl) data.copy_sl = data.copy_sl === 'true';
+    if (data.copy_tp) data.copy_tp = data.copy_tp === 'true';
+    if (data.copy_pending) data.copy_pending = data.copy_pending === 'true';
     if (data.symbol_override !== undefined) {
         data.symbol_override = data.symbol_override.trim();
         if (!data.symbol_override) { delete data.symbol_override; }

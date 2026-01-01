@@ -1,4 +1,4 @@
-﻿{% extends "base.html" %}
+{% extends "base.html" %}
 {% block title %}Settings - Trade Copier{% endblock %}
 {% block page_title %}<i class="fas fa-cog"></i> Settings{% endblock %}
 
@@ -94,12 +94,6 @@
           <div class="field"><label class="form-label">Delay (ms)</label><div class="input-wrapper"><i class="fas fa-clock input-icon"></i><input type="number" class="form-control" id="defDelay" value="0"></div><div class="form-hint"><i class="fas fa-info-circle"></i>Execution delay</div></div>
         </div>
       </div>
-      <div class="group">
-        <div class="group-title"><i class="fas fa-toggle-on"></i><span>Options</span></div>
-        <div class="row"><div class="row-left"><div class="icon-badge"><i class="fas fa-arrow-down"></i></div><div><div class="label">Copy Stop Loss</div><div class="desc">Copy SL to child</div></div></div><div class="row-right"><div class="toggle-switch is-on" id="copySL" data-setting="copy_sl"></div></div></div>
-        <div class="row"><div class="row-left"><div class="icon-badge"><i class="fas fa-arrow-up"></i></div><div><div class="label">Copy Take Profit</div><div class="desc">Copy TP to child</div></div></div><div class="row-right"><div class="toggle-switch is-on" id="copyTP" data-setting="copy_tp"></div></div></div>
-        <div class="row"><div class="row-left"><div class="icon-badge"><i class="fas fa-hourglass-half"></i></div><div><div class="label">Copy Pending</div><div class="desc">Copy pending orders</div></div></div><div class="row-right"><div class="toggle-switch" id="copyPending" data-setting="copy_pending"></div></div></div>
-      </div>
     </div>
     <div class="panel-footer">
       <div class="hint"><i class="fas fa-info-circle"></i>Changes will be applied after saving</div>
@@ -148,9 +142,6 @@ async function loadSettings() {
       document.getElementById('defDelay').value = s.delay || 0;
       if (s.auto_start) document.getElementById('autoStart').classList.add('is-on'); else document.getElementById('autoStart').classList.remove('is-on');
       if (s.start_minimized) document.getElementById('startMinimized').classList.add('is-on'); else document.getElementById('startMinimized').classList.remove('is-on');
-      if (s.copy_sl !== false) document.getElementById('copySL').classList.add('is-on'); else document.getElementById('copySL').classList.remove('is-on');
-      if (s.copy_tp !== false) document.getElementById('copyTP').classList.add('is-on'); else document.getElementById('copyTP').classList.remove('is-on');
-      if (s.copy_pending) document.getElementById('copyPending').classList.add('is-on'); else document.getElementById('copyPending').classList.remove('is-on');
     }
   } catch(e) { console.error('Failed to load settings:', e); }
 }
@@ -164,10 +155,7 @@ async function saveSettings() {
     slippage: parseInt(document.getElementById('defSlippage').value) || 10,
     delay: parseInt(document.getElementById('defDelay').value) || 0,
     auto_start: document.getElementById('autoStart').classList.contains('is-on'),
-    start_minimized: document.getElementById('startMinimized').classList.contains('is-on'),
-    copy_sl: document.getElementById('copySL').classList.contains('is-on'),
-    copy_tp: document.getElementById('copyTP').classList.contains('is-on'),
-    copy_pending: document.getElementById('copyPending').classList.contains('is-on')
+    start_minimized: document.getElementById('startMinimized').classList.contains('is-on')
   };
   try {
     const res = await fetch('/api/settings', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(settings) });

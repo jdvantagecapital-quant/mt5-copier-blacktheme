@@ -1,1 +1,1 @@
-{"settings":{"copy_interval":1,"retry_attempts":3,"copy_closes":true,"slippage":200,"filling_mode":"FOK","comment_tracking":true},"pairs":[]}
+{"settings":{"copy_interval":1,"retry_attempts":3,"copy_closes":true,"slippage":200,"filling_mode":"FOK","comment_tracking":true,"copy_sl":true,"copy_tp":true,"copy_pending":false},"pairs":[]}

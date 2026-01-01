@@ -1,4 +1,4 @@
-﻿"""
+"""
 MT5 Trade Copier Dashboard - Multi-Process Architecture
 Supports multiple pairs with multiple children per pair
 
@@ -123,11 +123,6 @@ def create_app(process_manager):
     @login_required
     def accounts():
         return render_template('accounts.html')
-    
-    @app.route('/logs')
-    @login_required
-    def logs():
-        return render_template('logs.html')
     
     @app.route('/history')
     @login_required
@@ -720,7 +715,7 @@ def create_app(process_manager):
                 try:
                     with open(master_log, 'r') as f:
                         master_activities = json.load(f)
-                    for log in master_activities[:100]:
+                    for log in master_activities[:500]:
                         all_logs.append({
                             'timestamp': f"{log.get('date', '')} {log.get('time', '')}".strip(),
                             'type': log.get('type', 'info'),
@@ -741,36 +736,45 @@ def create_app(process_manager):
                 except:
                     pass
             
-            # Load children activities
+            # Load children activities from .log files (text format)
+            import re as regex
             for child in pair.get('children', []):
                 child_id = child.get('id')
                 child_account = child.get('account', 'Unknown')
-                child_log = os.path.join(DATA_DIR, 'logs', f'activity_log_{pair_id}_{child_id}.json')
+                # Try the actual log file naming convention: child_{pair_id}_{child_id}.log
+                child_log = os.path.join(DATA_DIR, 'logs', f'child_{pair_id}_{child_id}.log')
                 if os.path.exists(child_log):
                     try:
                         with open(child_log, 'r') as f:
-                            child_activities = json.load(f)
-                        for log in child_activities[:100]:
-                            all_logs.append({
-                                'timestamp': f"{log.get('date', '')} {log.get('time', '')}".strip(),
-                                'type': log.get('type', 'info'),
-                                'action': log.get('action', log.get('type', 'info')),
-                                'message': log.get('message', ''),
-                                'account': str(child_account),
-                                'account_type': 'CHILD',
-                                'pair_id': pair_id,
-                                'pair_name': pair_name,
-                                'symbol': log.get('symbol', ''),
-                                'ticket': log.get('ticket', ''),
-                                'volume': log.get('volume', ''),
-                                'price': log.get('price', ''),
-                                'sl': log.get('sl', ''),
-                                'tp': log.get('tp', ''),
-                                'source': 'child',
-                                'child_id': child_id
-                            })
-                    except:
-                        pass
+                            lines = f.readlines()[-500:]
+                        for line in reversed(lines):
+                            line = line.strip()
+                            if not line:
+                                continue
+                            # Parse format: [2025-12-26 17:18:25.265] [INFO] message
+                            match = regex.match(r'\[(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2})\.\d+\] \[(\w+)\] (.+)', line)
+                            if match:
+                                date_str, time_str, log_type, message = match.groups()
+                                all_logs.append({
+                                    'timestamp': f"{date_str} {time_str}",
+                                    'type': log_type.lower(),
+                                    'action': log_type.lower(),
+                                    'message': message,
+                                    'account': str(child_account),
+                                    'account_type': 'CHILD',
+                                    'pair_id': pair_id,
+                                    'pair_name': pair_name,
+                                    'symbol': '',
+                                    'ticket': '',
+                                    'volume': '',
+                                    'price': '',
+                                    'sl': '',
+                                    'tp': '',
+                                    'source': 'child',
+                                    'child_id': child_id
+                                })
+                    except Exception as e:
+                        print(f"Error reading child log: {e}")
         
         # Also load trade_log.txt for general system logs
         trade_log = os.path.join(DATA_DIR, 'logs', 'trade_log.txt')
