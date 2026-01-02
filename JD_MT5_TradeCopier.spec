@@ -1,25 +1,19 @@
-﻿# -*- mode: python ; coding: utf-8 -*-
+# -*- mode: python ; coding: utf-8 -*-
+from PyInstaller.utils.hooks import collect_all
+
+datas = [('Templates', 'Templates'), ('static', 'static')]
+binaries = []
+hiddenimports = ['numpy', 'pandas', 'MetaTrader5']
+tmp_ret = collect_all('numpy')
+datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
+
 
 a = Analysis(
-    ['launcher_new.py'],
+    ['dashboard_new.py'],
     pathex=[],
-    binaries=[],
-    datas=[('Templates', 'Templates'), ('static', 'static')],
-    hiddenimports=[
-        'flask',
-        'jinja2',
-        'MetaTrader5',
-        'werkzeug',
-        'master_watcher_new',
-        'child_executor_new',
-        'dashboard_new',
-        'numpy',
-        'numpy._core',
-        'numpy._core.multiarray',
-        'numpy.core',
-        'numpy.core.multiarray',
-        'numpy.core._multiarray_umath',
-    ],
+    binaries=binaries,
+    datas=datas,
+    hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
@@ -42,7 +36,7 @@ exe = EXE(
     upx=True,
     upx_exclude=[],
     runtime_tmpdir=None,
-    console=True,
+    console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
