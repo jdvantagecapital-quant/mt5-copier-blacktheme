@@ -1,228 +1,14 @@
-{% extends "base.html" %}
-{% block title %}Dashboard - MT5 Trade Copier{% endblock %}
-{% block page_title %}<i class="fas fa-th-large"></i> Dashboard{% endblock %}
+﻿file_path = r'C:\Users\MI\MT5-Copier-new\Templates\index.html'
 
-{% block extra_css %}
-<style>
-    @keyframes glow-border { 0%, 100% { box-shadow: 0 0 5px rgba(255,255,255,0.03); } 50% { box-shadow: 0 0 15px rgba(255,255,255,0.08); } }
-    @keyframes glow-gold { 0%, 100% { box-shadow: 0 0 8px rgba(204,136,0,0.2); } 50% { box-shadow: 0 0 20px rgba(204,136,0,0.35); } }
-    @keyframes glow-blue { 0%, 100% { box-shadow: 0 0 8px rgba(0,136,204,0.2); } 50% { box-shadow: 0 0 20px rgba(0,136,204,0.35); } }
-    @keyframes pulse-dot { 0%, 100% { box-shadow: 0 0 4px currentColor; } 50% { box-shadow: 0 0 12px currentColor; } }
+with open(file_path, 'r', encoding='utf-8') as f:
+    content = f.read()
 
-    .overview-section { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
-    @media (max-width: 900px) { .overview-section { grid-template-columns: repeat(2, 1fr); } }
-    .overview-card { background: linear-gradient(145deg, #0a0a0a, #111); border: 1px solid #1a1a1a; border-radius: 12px; padding: 18px; position: relative; animation: glow-border 4s ease-in-out infinite; }
-    .overview-card::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; border-radius: 4px 0 0 4px; }
-    .overview-card.pairs::before { background: linear-gradient(180deg, #667eea, #764ba2); }
-    .overview-card.children::before { background: linear-gradient(180deg, #0088cc, #00aaff); }
-    .overview-card.copied::before { background: linear-gradient(180deg, #00c864, #00a854); }
-    .overview-card.profit::before { background: linear-gradient(180deg, #cc8800, #ffaa00); }
-    .overview-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
-    .overview-icon { width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; border: 1px solid; }
-    .overview-card.pairs .overview-icon { background: rgba(102,126,234,0.1); color: #667eea; border-color: rgba(102,126,234,0.2); }
-    .overview-card.children .overview-icon { background: rgba(0,136,204,0.1); color: #0088cc; border-color: rgba(0,136,204,0.2); }
-    .overview-card.copied .overview-icon { background: rgba(0,200,100,0.1); color: #00c864; border-color: rgba(0,200,100,0.2); }
-    .overview-card.profit .overview-icon { background: rgba(204,136,0,0.1); color: #cc8800; border-color: rgba(204,136,0,0.2); }
-    .overview-badge { font-size: 8px; font-weight: 600; text-transform: uppercase; padding: 4px 8px; border-radius: 10px; border: 1px solid; }
-    .overview-badge.active { background: rgba(0,200,100,0.1); color: #00c864; border-color: rgba(0,200,100,0.2); }
-    .overview-badge.inactive { background: rgba(255,68,102,0.1); color: #ff4466; border-color: rgba(255,68,102,0.2); }
-    .overview-badge.neutral { background: rgba(102,126,234,0.1); color: #667eea; border-color: rgba(102,126,234,0.2); }
-    .overview-value { font-size: 28px; font-weight: 700; font-family: 'JetBrains Mono', monospace; color: #ccc; margin-bottom: 4px; }
-    .overview-value.green { color: #00c864; }
-    .overview-value.red { color: #ff4466; }
-    .overview-label { font-size: 11px; color: #555; text-transform: uppercase; letter-spacing: 1px; }
+script_start = content.find('{% block extra_js %}')
+if script_start == -1:
+    print('Could not find script block')
+    exit(1)
 
-    /* P/L Comparison Section */
-    .pnl-section { background: linear-gradient(145deg, #0a0a0a, #111); border: 1px solid #1a1a1a; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
-    .pnl-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid #1a1a1a; }
-    .pnl-title { font-size: 12px; font-weight: 600; color: #888; display: flex; align-items: center; gap: 8px; }
-    .pnl-title i { color: #cc8800; }
-    .pnl-filter { display: flex; gap: 6px; align-items: center; }
-    .pnl-filter-btn { padding: 5px 10px; font-size: 9px; font-weight: 600; background: rgba(204,136,0,0.1); color: #cc8800; border: 1px solid rgba(204,136,0,0.2); border-radius: 4px; cursor: pointer; }
-    .pnl-filter-btn:hover { background: rgba(204,136,0,0.2); }
-    .pnl-filter-btn.active { background: rgba(204,136,0,0.3); border-color: rgba(204,136,0,0.5); }
-    .pnl-date-input { padding: 4px 8px; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 4px; color: var(--text-primary); font-size: 10px; width: 100px; -webkit-appearance: none; position: relative; }
-    .pnl-date-input::-webkit-calendar-picker-indicator { filter: invert(0.8); cursor: pointer; opacity: 0.8; padding: 2px; }
-    .pnl-date-input::-webkit-calendar-picker-indicator:hover { opacity: 1; }
-    html[data-theme="light"] .pnl-date-input { background: #fff; border-color: #d0d2d7; color: #333; }
-    html[data-theme="light"] .pnl-date-input::-webkit-calendar-picker-indicator { filter: invert(0.2); opacity: 1; }
-    .pnl-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
-    .pnl-card { background: #080808; border: 1px solid #1a1a1a; border-radius: 8px; padding: 14px; }
-    .pnl-card.master { border-left: 3px solid #cc8800; }
-    .pnl-card.child { border-left: 3px solid #0088cc; }
-    .pnl-card.diff { border-left: 3px solid #ff4466; }
-    .pnl-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-    .pnl-account { font-size: 10px; color: #666; font-family: 'JetBrains Mono', monospace; }
-    .pnl-badge { font-size: 8px; padding: 2px 6px; border-radius: 3px; font-weight: 600; }
-    .pnl-badge.master { background: rgba(204,136,0,0.15); color: #cc8800; }
-    .pnl-badge.child { background: rgba(0,136,204,0.15); color: #0088cc; }
-    .pnl-badge.diff { background: rgba(255,68,102,0.15); color: #ff4466; }
-    .pnl-value { font-size: 20px; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
-    .pnl-value.pos { color: #00c864; }
-    .pnl-value.neg { color: #ff4466; }
-    .pnl-label { font-size: 9px; color: #444; margin-top: 4px; }
-    .pnl-diff-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-top: 1px solid #151515; margin-top: 6px; }
-    .pnl-diff-label { font-size: 9px; color: #555; }
-    .pnl-diff-val { font-size: 12px; font-weight: 600; font-family: 'JetBrains Mono', monospace; }
-
-    .control-bar { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: linear-gradient(145deg, #0a0a0a, #0d0d0d); border: 1px solid #1a1a1a; border-radius: 8px; margin-bottom: 12px; }
-    .control-left { display: flex; align-items: center; gap: 16px; }
-    .status-indicator { display: flex; align-items: center; gap: 8px; padding: 6px 14px; background: rgba(0,200,100,0.08); border: 1px solid rgba(0,200,100,0.2); border-radius: 20px; }
-    .status-indicator.stopped { background: rgba(255,68,102,0.08); border-color: rgba(255,68,102,0.2); }
-    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #00c864; animation: pulse-dot 2s ease-in-out infinite; }
-    .status-dot.stopped { background: #ff4466; }
-    .status-text { font-size: 10px; font-weight: 600; letter-spacing: 1px; color: #00c864; }
-    .status-text.stopped { color: #ff4466; }
-    .ctrl-buttons { display: flex; gap: 8px; }
-    .ctrl-btn { padding: 8px 18px; border-radius: 6px; font-size: 11px; font-weight: 600; border: 1px solid; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 6px; }
-    .ctrl-btn.start { background: rgba(0,200,100,0.1); color: #00c864; border-color: rgba(0,200,100,0.3); }
-    .ctrl-btn.start:hover:not(:disabled) { background: rgba(0,200,100,0.2); }
-    .ctrl-btn.stop { background: rgba(255,68,102,0.1); color: #ff4466; border-color: rgba(255,68,102,0.3); }
-    .ctrl-btn.stop:hover:not(:disabled) { background: rgba(255,68,102,0.2); }
-    .ctrl-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-
-    .pair-selector { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; padding: 10px 14px; background: #0a0a0a; border: 1px solid #1a1a1a; border-radius: 6px; }
-    .pair-selector label { font-size: 10px; color: #444; font-weight: 500; display: flex; align-items: center; gap: 6px; }
-    .pair-select { flex: 1; max-width: 280px; padding: 8px 12px; background: #111; border: 1px solid #222; border-radius: 4px; color: #ccc; font-size: 11px; }
-
-    .main-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 12px; margin-bottom: 16px; }
-
-    .acc-card { background: #0a0a0a; border: 1px solid #1a1a1a; border-radius: 8px; overflow: hidden; animation: glow-border 5s ease-in-out infinite; display: flex; flex-direction: column; }
-    .acc-card.master { border-left: 3px solid #cc8800; animation: glow-gold 4s ease-in-out infinite; }
-    .acc-card.child { border-left: 3px solid #0088cc; animation: glow-blue 4s ease-in-out infinite; }
-    .acc-header { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #151515; }
-    .acc-info { display: flex; align-items: center; gap: 8px; }
-    .acc-badge { font-size: 8px; font-weight: 600; padding: 3px 8px; border-radius: 3px; text-transform: uppercase; }
-    .acc-badge.master { background: rgba(204,136,0,0.15); color: #cc8800; }
-    .acc-badge.child { background: rgba(0,136,204,0.15); color: #0088cc; }
-    .acc-num { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #888; }
-    .acc-status { font-size: 9px; display: flex; align-items: center; gap: 4px; }
-    .acc-status.on { color: #00c864; }
-    .acc-status.off { color: #ff4466; }
-    .acc-status i { font-size: 6px; }
-    .bal-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 12px; background: #080808; }
-    .bal-label { font-size: 9px; color: #444; text-transform: uppercase; margin-bottom: 2px; }
-    .bal-value { font-size: 15px; font-weight: 600; font-family: 'JetBrains Mono', monospace; color: #ccc; }
-
-    .acc-tabs { display: flex; border-bottom: 1px solid #151515; background: #080808; }
-    .tab-btn { flex: 1; padding: 8px; font-size: 9px; color: #444; background: transparent; border: none; cursor: pointer; border-bottom: 2px solid transparent; }
-    .tab-btn:hover { color: #666; }
-    .tab-btn.active { color: #888; border-bottom-color: #444; }
-    .tab-panel { display: none; }
-    .tab-panel.show { display: block; }
-
-    .card-filter { display: flex; align-items: center; gap: 6px; padding: 8px 12px; background: #050505; border-bottom: 1px solid #151515; flex-wrap: wrap; }
-    .card-filter-label { font-size: 8px; color: #444; display: flex; align-items: center; gap: 4px; }
-    .card-filter-btn { padding: 4px 8px; font-size: 8px; font-weight: 600; background: rgba(0,136,204,0.1); color: #0088cc; border: 1px solid rgba(0,136,204,0.2); border-radius: 3px; cursor: pointer; }
-    .card-filter-btn:hover { background: rgba(0,136,204,0.2); }
-    .card-filter-btn.active { background: rgba(0,136,204,0.3); border-color: rgba(0,136,204,0.5); }
-    .card-date-input { padding: 3px 6px; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 3px; color: var(--text-primary); font-size: 9px; font-family: 'JetBrains Mono', monospace; width: 90px; -webkit-appearance: none; position: relative; }
-    .card-date-input::-webkit-calendar-picker-indicator { filter: invert(0.8); cursor: pointer; opacity: 0.8; padding: 2px; }
-    .card-date-input::-webkit-calendar-picker-indicator:hover { opacity: 1; }
-    html[data-theme="light"] .card-date-input { background: #fff; border-color: #d0d2d7; color: #333; }
-    html[data-theme="light"] .card-date-input::-webkit-calendar-picker-indicator { filter: invert(0.2); opacity: 1; }
-
-    .trades-tbl { padding: 8px 12px 12px; overflow-y: auto; max-height: 180px; overscroll-behavior: contain; }
-    .tbl-head { display: grid; grid-template-columns: 1.5fr 0.8fr 0.8fr 1fr 1fr; gap: 6px; padding: 6px 0; border-bottom: 1px solid #151515; font-size: 8px; color: #333; text-transform: uppercase; }
-    .tbl-row { display: grid; grid-template-columns: 1.5fr 0.8fr 0.8fr 1fr 1fr; gap: 6px; padding: 6px 0; border-bottom: 1px solid #0d0d0d; align-items: center; }
-    .t-sym { font-weight: 600; color: #888; font-size: 10px; }
-    .t-type { font-size: 8px; font-weight: 600; text-transform: uppercase; }
-    .t-type.buy { color: #00c864; }
-    .t-type.sell { color: #ff4466; }
-    .t-lots, .t-price { font-family: 'JetBrains Mono', monospace; color: #666; font-size: 9px; }
-    .t-pnl { font-family: 'JetBrains Mono', monospace; font-weight: 600; text-align: right; }
-    .t-pnl.pos { color: #00c864; }
-    .t-pnl.neg { color: #ff4466; }
-
-    .activity-panel { padding: 8px 12px 12px; max-height: 180px; overflow-y: auto; flex: 1; }
-    .activity-item { display: flex; align-items: flex-start; gap: 6px; padding: 4px 0; border-bottom: 1px solid #111; font-size: 9px; }
-    .activity-time { font-family: 'JetBrains Mono', monospace; color: #444; font-size: 8px; min-width: 45px; }
-    .activity-icon { width: 16px; height: 16px; border-radius: 3px; display: flex; align-items: center; justify-content: center; font-size: 7px; border: 1px solid; flex-shrink: 0; }
-    .activity-icon.TRADE { background: rgba(0,200,100,0.1); color: #00c864; border-color: rgba(0,200,100,0.2); }
-    .activity-icon.CLOSE { background: rgba(255,68,102,0.1); color: #ff4466; border-color: rgba(255,68,102,0.2); }
-    .activity-icon.INFO { background: rgba(0,136,204,0.1); color: #0088cc; border-color: rgba(0,136,204,0.2); }
-    .activity-icon.SIGNAL { background: rgba(204,136,0,0.1); color: #cc8800; border-color: rgba(204,136,0,0.2); }
-    .activity-icon.ERROR { background: rgba(255,68,102,0.1); color: #ff4466; border-color: rgba(255,68,102,0.2); }
-    .activity-msg { color: #666; flex: 1; line-height: 1.3; word-break: break-word; }
-
-    .total-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #080808; border-top: 1px solid #1a1a1a; margin-top: auto; }
-    .total-lbl { font-size: 9px; color: #444; font-weight: 500; text-transform: uppercase; }
-    .total-val { font-size: 14px; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
-    .total-val.pos { color: #00c864; }
-    .total-val.neg { color: #ff4466; }
-
-    .empty-msg { padding: 20px; text-align: center; color: #333; font-size: 10px; }
-    .no-pairs { padding: 40px; text-align: center; background: #0a0a0a; border: 1px dashed #222; border-radius: 8px; }
-    .no-pairs i { font-size: 30px; color: #222; margin-bottom: 12px; display: block; }
-    .no-pairs h3 { color: #555; margin-bottom: 6px; font-size: 14px; }
-    .no-pairs p { color: #333; margin-bottom: 12px; font-size: 11px; }
-    .no-pairs a { color: #0088cc; font-weight: 600; text-decoration: none; }
-    .error-msg { color: #ff4466; font-size: 9px; padding: 8px 12px; background: rgba(255,68,102,0.05); border-bottom: 1px solid rgba(255,68,102,0.1); }
-
-    /* Light theme fixes */
-    html[data-theme="light"] .overview-value { color: #111; }
-    html[data-theme="light"] .overview-value.green { color: #00a854; }
-    html[data-theme="light"] .overview-value.red { color: #ff4466; }
-</style>
-{% endblock %}
-
-{% block content %}
-<div class="overview-section" style="grid-template-columns: repeat(3, 1fr);">
-    <div class="overview-card pairs">
-        <div class="overview-top"><div class="overview-icon"><i class="fas fa-crown"></i></div><span class="overview-badge neutral" id="pairsStatus">Configured</span></div>
-        <div class="overview-value" id="totalPairs">0</div>
-        <div class="overview-label">Trading Pairs</div>
-    </div>
-    <div class="overview-card children">
-        <div class="overview-top"><div class="overview-icon"><i class="fas fa-users"></i></div><span class="overview-badge neutral" id="childrenStatus">Connected</span></div>
-        <div class="overview-value" id="totalChildren">0</div>
-        <div class="overview-label">Child Accounts</div>
-    </div>
-    <div class="overview-card copied">
-        <div class="overview-top"><div class="overview-icon"><i class="fas fa-copy"></i></div><span class="overview-badge active" id="copiedStatus">Today</span></div>
-        <div class="overview-value" id="totalCopied">0</div>
-        <div class="overview-label">Trades Copied</div>
-    </div>
-</div>
-
-<!-- P/L Comparison Section -->
-<div class="pnl-section" id="pnlSection">
-    <div class="pnl-header">
-        <div class="pnl-title"><i class="fas fa-chart-bar"></i> P/L Comparison</div>
-        <div class="pnl-filter">
-            <button class="pnl-filter-btn" onclick="setPnlFilter('today', this)">Today</button>
-            <button class="pnl-filter-btn" onclick="setPnlFilter('7days', this)">7D</button>
-            <button class="pnl-filter-btn active" onclick="setPnlFilter('30days', this)">30D</button>
-            <input type="date" class="pnl-date-input" id="pnl_from">
-            <input type="date" class="pnl-date-input" id="pnl_to">
-            <button class="pnl-filter-btn" onclick="applyPnlCustomDate()"><i class="fas fa-check"></i></button>
-        </div>
-    </div>
-    <div class="pnl-grid" id="pnlGrid"></div>
-</div>
-
-<div class="control-bar">
-    <div class="control-left">
-        <div class="status-indicator stopped" id="statusIndicator">
-            <div class="status-dot stopped" id="statusDot"></div>
-            <span class="status-text stopped" id="statusText">STOPPED</span>
-        </div>
-    </div>
-    <div class="ctrl-buttons">
-        <button class="ctrl-btn start" id="btnStart" onclick="startCopier()"><i class="fas fa-play"></i> Start</button>
-        <button class="ctrl-btn stop" id="btnStop" onclick="stopCopier()" disabled><i class="fas fa-stop"></i> Stop</button>
-    </div>
-</div>
-
-<div class="pair-selector">
-    <label><i class="fas fa-exchange-alt"></i> Active Pair</label>
-    <select class="pair-select" id="pairSelect" onchange="selectPair()"><option value="">Select a pair...</option></select>
-</div>
-
-<div class="main-grid" id="accountsContainer"></div>
-{% endblock %}
-
-{% block extra_js %}
+new_script = r"""{% block extra_js %}
 <script>
 // DASHBOARD v4.0 - Full Features: Individual filters, custom dates, all accounts, activity logs
 let allPairs = [], selectedPairId = null, selectedPair = null, processStatus = {};
@@ -720,4 +506,14 @@ setInterval(() => {
     loadData();
 }, 5000);
 </script>
-{% endblock %}
+{% endblock %}"""
+
+new_content = content[:script_start] + new_script
+with open(file_path, 'w', encoding='utf-8') as f:
+    f.write(new_content)
+
+print('Dashboard v4.0 - COMPLETE FIX!')
+print('- Individual date filters per card with custom date inputs')
+print('- All children accounts shown')
+print('- Full activity log display')
+print('- Proper P/L comparison')

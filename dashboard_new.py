@@ -296,11 +296,15 @@ def create_app(process_manager):
         for key in ['name', 'master_terminal', 'master_password', 'master_server']:
             if key in data:
                 pair[key] = (data[key] or '').strip() if isinstance(data[key], str) else data[key]
-        # Update master symbol fields
+        # Update master symbol fields - CLEAR old ones first, then set new ones
         for i in range(1, 21):
             key = f'master_symbol_{i}'
-            if key in data:
-                pair[key] = data[key].upper() if isinstance(data[key], str) else ''
+            # Always clear old value first
+            if key in pair:
+                del pair[key]
+            # Then set new value if provided and not empty
+            if key in data and data[key]:
+                pair[key] = data[key].upper() if isinstance(data[key], str) else data[key]
         if 'enabled' in data:
             pair['enabled'] = data['enabled']
         # Update children if provided
@@ -380,11 +384,26 @@ def create_app(process_manager):
             'lot_multiplier': data.get('lot_multiplier', 1.0),
             'copy_mode': data.get('copy_mode', 'normal'),
             'copy_close': data.get('copy_close', True),
+            'copy_sl': data.get('copy_sl', True),
+            'copy_tp': data.get('copy_tp', True),
+            'copy_pending': data.get('copy_pending', True),
+            'active_from': data.get('active_from', ''),
+            'active_to': data.get('active_to', ''),
+            'period': data.get('period', 'M1'),
+            'symbol_override': data.get('symbol_override', False),
+            'force_copy': data.get('force_copy', False),
             'enabled': data.get('enabled', True)
         }
         
         if 'children' not in pair:
             pair['children'] = []
+        
+        # Add symbol fields from data
+        for i in range(1, 21):
+            key = f'child_symbol_{i}'
+            if key in data:
+                new_child[key] = data[key].upper() if isinstance(data[key], str) else data[key]
+        
         pair['children'].append(new_child)
         
         save_config(config)
@@ -405,17 +424,21 @@ def create_app(process_manager):
             return jsonify({'success': False, 'error': 'Child not found'})
         
         # Update child fields
-        for key in ['name', 'terminal', 'account', 'password', 'server', 'lot_multiplier', 'copy_mode', 'copy_close', 'enabled', 'period', 'symbol_override', 'force_copy']:
+        for key in ['name', 'terminal', 'account', 'password', 'server', 'lot_multiplier', 'copy_mode', 'copy_close', 'enabled', 'period', 'symbol_override', 'force_copy', 'copy_sl', 'copy_tp', 'copy_pending', 'active_from', 'active_to']:
             if key in data:
                 value = data[key]
                 if key in ['terminal', 'server'] and isinstance(value, str):
                     value = value.strip('"' + chr(39) + '  ')
                 child[key] = value
         
-        # Update child symbol fields
+        # Update child symbol fields - CLEAR old ones first, then set new ones
         for i in range(1, 21):
             key = f'child_symbol_{i}'
-            if key in data:
+            # Always clear old value first
+            if key in child:
+                del child[key]
+            # Then set new value if provided and not empty
+            if key in data and data[key]:
                 child[key] = data[key].upper() if isinstance(data[key], str) else data[key]
         
         save_config(config)

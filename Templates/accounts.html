@@ -356,6 +356,9 @@ function openPairModal() {
     document.getElementById('pairSaveBtn').innerHTML = '<i class="fas fa-check"></i> Create';
     document.getElementById('pairForm').reset();
     document.getElementById('pairEditId').value = '';
+    // Reset symbol container to just slot 1
+    const container = document.getElementById('masterSymbolContainer');
+    container.innerHTML = '<div class="form-group"><label class="form-label"><i class="fas fa-sync"></i> Master Symbol 1</label><input type="text" class="form-input" name="master_symbol_1" id="pairMasterSymbol1" placeholder="e.g. EURUSD"><span class="form-hint">Maps to child symbol 1</span></div>';
     document.getElementById('pairModal').classList.add('active'); 
 }
 
@@ -371,16 +374,33 @@ function openEditPairModal(pairId) {
     document.getElementById('pairMasterServer').value = pair.master_server || '';
     document.getElementById('pairMasterTerminal').value = pair.master_terminal || '';
     document.getElementById('pairName').value = pair.name || '';
-    for(let i=1; i<=5; i++) {
-        const field = document.getElementById('pairMasterSymbol' + i);
-        if(field) field.value = pair['master_symbol_' + i] || '';
+    
+    // Dynamically create and populate master symbol slots
+    const container = document.getElementById('masterSymbolContainer');
+    container.innerHTML = '<div class="form-group"><label class="form-label"><i class="fas fa-sync"></i> Master Symbol 1</label><input type="text" class="form-input" name="master_symbol_1" id="pairMasterSymbol1" placeholder="e.g. EURUSD"><span class="form-hint">Maps to child symbol 1</span></div>';
+    document.getElementById('pairMasterSymbol1').value = pair['master_symbol_1'] || '';
+    
+    // Add slots for any additional symbols that exist
+    for(let i=2; i<=20; i++) {
+        const symbolValue = pair['master_symbol_' + i];
+        if (symbolValue) {
+            const newDiv = document.createElement('div');
+            newDiv.className = 'form-group';
+            newDiv.innerHTML = '<label class="form-label"><i class="fas fa-sync"></i> Master Symbol ' + i + '</label><input type="text" class="form-input" name="master_symbol_' + i + '" id="pairMasterSymbol' + i + '" placeholder="e.g. EURUSD"><span class="form-hint">Maps to child symbol ' + i + '</span><button type="button" class="modal-btn" onclick="this.parentElement.remove()" style="padding: 4px 8px; font-size: 11px; margin-top: 4px; background-color: #f44336;"><i class="fas fa-trash"></i> Remove</button>';
+            container.appendChild(newDiv);
+            document.getElementById('pairMasterSymbol' + i).value = symbolValue;
+        }
     }
+    
     document.getElementById('pairModal').classList.add('active');
 }
 
 function closePairModal() { 
     document.getElementById('pairModal').classList.remove('active'); 
-    document.getElementById('pairForm').reset(); 
+    document.getElementById('pairForm').reset();
+    // Reset symbol container to just slot 1
+    const container = document.getElementById('masterSymbolContainer');
+    container.innerHTML = '<div class="form-group"><label class="form-label"><i class="fas fa-sync"></i> Master Symbol 1</label><input type="text" class="form-input" name="master_symbol_1" id="pairMasterSymbol1" placeholder="e.g. EURUSD"><span class="form-hint">Maps to child symbol 1</span></div>';
     editingPair = null;
 }
 
@@ -398,7 +418,9 @@ function openChildModal(pairId) {
     document.getElementById('childCopySL').value = 'true';
     document.getElementById('childCopyTP').value = 'true';
     document.getElementById('childCopyPending').value = 'true';
-    document.getElementById('childSymbol').value = '';
+    // Reset symbol container to just slot 1
+    const container = document.getElementById('childSymbolContainer');
+    container.innerHTML = '<div class="form-group"><label class="form-label"><i class="fas fa-link"></i> Child Symbol 1</label><input type="text" class="form-input" name="child_symbol_1" id="childSymbol1" placeholder="e.g. EURUSD.b"><span class="form-hint">For master symbol 1</span></div>';
     document.getElementById('childModal').classList.add('active'); 
 }
 
@@ -423,10 +445,25 @@ function openEditChildModal(pairId, childId) {
     document.getElementById('childCopySL').value = child.copy_sl !== false ? 'true' : 'false';
     document.getElementById('childCopyTP').value = child.copy_tp !== false ? 'true' : 'false';
     document.getElementById('childCopyPending').value = child.copy_pending !== false ? 'true' : 'false';
-    for(let i=1; i<=5; i++) {
-        const field = document.getElementById('childSymbol' + i);
-        if(field) field.value = child['child_symbol_' + i] || '';
+    
+    // Dynamically create and populate child symbol slots
+    const container = document.getElementById('childSymbolContainer');
+    // Reset to just first slot
+    container.innerHTML = '<div class="form-group"><label class="form-label"><i class="fas fa-link"></i> Child Symbol 1</label><input type="text" class="form-input" name="child_symbol_1" id="childSymbol1" placeholder="e.g. EURUSD.b"><span class="form-hint">For master symbol 1</span></div>';
+    document.getElementById('childSymbol1').value = child['child_symbol_1'] || '';
+    
+    // Add slots for any additional symbols that exist
+    for(let i=2; i<=20; i++) {
+        const symbolValue = child['child_symbol_' + i];
+        if (symbolValue) {
+            const newDiv = document.createElement('div');
+            newDiv.className = 'form-group';
+            newDiv.innerHTML = '<label class="form-label"><i class="fas fa-link"></i> Child Symbol ' + i + '</label><input type="text" class="form-input" name="child_symbol_' + i + '" id="childSymbol' + i + '" placeholder="e.g. EURUSD.b"><span class="form-hint">For master symbol ' + i + '</span><button type="button" class="modal-btn" onclick="this.parentElement.remove()" style="padding: 4px 8px; font-size: 11px; margin-top: 4px; background-color: #f44336;"><i class="fas fa-trash"></i> Remove</button>';
+            container.appendChild(newDiv);
+            document.getElementById('childSymbol' + i).value = symbolValue;
+        }
     }
+    
     document.getElementById('childActiveFrom').value = child.active_from || '';
     document.getElementById('childActiveTo').value = child.active_to || '';
     document.getElementById('childModal').classList.add('active');
@@ -434,7 +471,10 @@ function openEditChildModal(pairId, childId) {
 
 function closeChildModal() { 
     document.getElementById('childModal').classList.remove('active'); 
-    document.getElementById('childForm').reset(); 
+    document.getElementById('childForm').reset();
+    // Reset symbol container to just slot 1
+    const container = document.getElementById('childSymbolContainer');
+    container.innerHTML = '<div class="form-group"><label class="form-label"><i class="fas fa-link"></i> Child Symbol 1</label><input type="text" class="form-input" name="child_symbol_1" id="childSymbol1" placeholder="e.g. EURUSD.b"><span class="form-hint">For master symbol 1</span></div>';
     editingChild = null;
 }
 

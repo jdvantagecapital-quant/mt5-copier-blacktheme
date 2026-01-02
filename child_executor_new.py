@@ -348,9 +348,8 @@ def modify_pending_sltp(ticket, new_sl, new_tp, log):
             return False
         
         order = orders[0]
-        # Skip if values are the same
         if abs(order.sl - new_sl) < 0.00001 and abs(order.tp - new_tp) < 0.00001:
-            return True  # Already set
+            return True
         
         request = {
             "action": mt5.TRADE_ACTION_MODIFY,
@@ -372,16 +371,105 @@ def modify_pending_sltp(ticket, new_sl, new_tp, log):
             log.log(f"Modified pending order {ticket}: SL={new_sl}, TP={new_tp}", "TRADE")
             return True
         else:
-            log.log(f"Modify pending SL/TP failed: {result.retcode} - {result.comment}", "ERROR")
+            log.log(f"Modify pending SL/TP failed: {result.retcode}", "ERROR")
             return False
-            
     except Exception as e:
         log.log(f"Modify pending SL/TP error: {e}", "ERROR")
         return False
 
-def open_pending_order(symbol, order_type, volume, price, sl, tp, master_ticket, comment, log):
-    """Open a pending order on child account"""
+def modify_pending_price(ticket, new_price, new_sl, new_tp, log):
+    """Modify price on an existing pending order"""
     try:
+        orders = mt5.orders_get(ticket=ticket)
+        if not orders:
+            return False
+        
+        order = orders[0]
+        
+        request = {
+            "action": mt5.TRADE_ACTION_MODIFY,
+            "order": ticket,
+            "symbol": order.symbol,
+            "price": new_price,
+            "sl": new_sl,
+            "tp": new_tp,
+            "type_time": order.type_time,
+            "expiration": order.time_expiration,
+        }
+        
+        result = mt5.order_send(request)
+        if result is None:
+            log.log(f"Modify pending price failed - no response", "ERROR")
+            return False
+        
+        if result.retcode == mt5.TRADE_RETCODE_DONE:
+            log.log(f"Modified pending order {ticket}: Price={new_price}, SL={new_sl}, TP={new_tp}", "TRADE")
+            return True
+        else:
+            log.log(f"Modify pending price failed: {result.retcode} - {result.comment}", "ERROR")
+            return False
+            
+    except Exception as e:
+        log.log(f"Modify pending price error: {e}", "ERROR")
+        return False
+
+def open_pending_order(symbol, order_type, volume, price, sl, tp, master_ticket, comment, log, copy_mode='normal'):
+    """Open a pending order on child account with copy mode support"""
+    try:
+        # Apply ONLY_BUY / ONLY_SELL filter
+        if copy_mode == 'only_buy' and order_type not in [2, 4]:  # Not BUY_LIMIT or BUY_STOP
+            log.log(f"Skipping SELL pending order - only_buy mode active", "INFO")
+            return True  # Return True to mark as handled
+        elif copy_mode == 'only_sell' and order_type not in [3, 5]:  # Not SELL_LIMIT or SELL_STOP
+            log.log(f"Skipping BUY pending order - only_sell mode active", "INFO")
+            return True  # Return True to mark as handled
+        
+        # Apply REVERSE mode type mapping
+        original_type = order_type
+        if copy_mode == 'reverse':
+            # BUY_LIMIT(2) <-> SELL_LIMIT(3), BUY_STOP(4) <-> SELL_STOP(5)
+            reverse_map = {2: 3, 3: 2, 4: 5, 5: 4}
+            order_type = reverse_map.get(order_type, order_type)
+            
+            # Mirror the price around current market price for REVERSE
+            # BUY_STOP needs price ABOVE current, SELL_STOP needs BELOW, etc.
+            try:
+                tick = mt5.symbol_info_tick(symbol)
+                if tick:
+                    current_price = (tick.bid + tick.ask) / 2
+                    price_distance = abs(price - current_price)
+                    
+                    # Determine if we need to flip the price
+                    # SELL_STOP (5) -> BUY_STOP (4): price was below, now needs above
+                    # BUY_STOP (4) -> SELL_STOP (5): price was above, now needs below
+                    # SELL_LIMIT (3) -> BUY_LIMIT (2): price was above, now needs below
+                    # BUY_LIMIT (2) -> SELL_LIMIT (3): price was below, now needs above
+                    if price < current_price:
+                        price = current_price + price_distance
+                    else:
+                        price = current_price - price_distance
+                    
+                    # Round to symbol's price precision
+                    info = mt5.symbol_info(symbol)
+                    if info:
+                        digits = info.digits
+                        price = round(price, digits)
+                    
+                    log.log(f"REVERSE: Price mirrored to {price:.5f} (market: {current_price:.5f})", "DEBUG")
+            except Exception as e:
+                log.log(f"REVERSE: Price mirror error: {e}", "WARN")
+            
+            # Also swap SL and TP for reverse mode
+            if sl > 0 and tp > 0:
+                sl, tp = tp, sl
+            elif sl > 0 and tp == 0:
+                tp = sl
+                sl = 0
+            elif tp > 0 and sl == 0:
+                sl = tp
+                tp = 0
+            log.log(f"REVERSE: Pending type {original_type} -> {order_type}, SL/TP swapped", "DEBUG")
+        
         log.log(f"open_pending_order: {symbol} type={order_type} vol={volume} price={price} sl={sl} tp={tp}", "DEBUG")
         info = mt5.symbol_info(symbol)
         if info is None:
@@ -427,7 +515,8 @@ def open_pending_order(symbol, order_type, volume, price, sl, tp, master_ticket,
         
         if result.retcode == mt5.TRADE_RETCODE_DONE:
             order_name = ['','','BUY_LIMIT','SELL_LIMIT','BUY_STOP','SELL_STOP'][order_type] if order_type <= 5 else 'PENDING'
-            log.log(f"Pending order placed: {order_name} {volume} {symbol} @ {price}", "TRADE")
+            mode_str = f" [{copy_mode.upper()}]" if copy_mode != 'normal' else ""
+            log.log(f"Pending order placed: {order_name} {volume} {symbol} @ {price}{mode_str}", "TRADE")
             return True
         else:
             log.log(f"Pending order failed: {result.retcode} - {result.comment}", "ERROR")
@@ -780,6 +869,18 @@ def main(pair_id, child_id):
                                 cp = child_pos[0]
                                 new_sl = master_pos['sl'] if copy_sl else cp.sl
                                 new_tp = master_pos['tp'] if copy_tp else cp.tp
+                                
+                                # REVERSE mode: Swap SL and TP for opposite positions
+                                if copy_mode == 'reverse':
+                                    if new_sl > 0 and new_tp > 0:
+                                        new_sl, new_tp = new_tp, new_sl  # Swap both
+                                    elif new_sl > 0 and new_tp == 0:
+                                        new_tp = new_sl
+                                        new_sl = 0
+                                    elif new_tp > 0 and new_sl == 0:
+                                        new_sl = new_tp
+                                        new_tp = 0
+                                
                                 # Check if SL/TP changed
                                 if abs(cp.sl - new_sl) > 0.00001 or abs(cp.tp - new_tp) > 0.00001:
                                     modify_sltp(child_ticket, cp.symbol, new_sl, new_tp, log)
@@ -875,31 +976,48 @@ def main(pair_id, child_id):
                                     order['tp'] if copy_tp else 0,
                                     master_ticket,
                                     f"pending_{master_ticket}",
-                                    log
+                                    log,
+                                    copy_mode
                                 )
                                 
                                 if success:
-                                    pending_track[master_ticket] = {'symbol': order['symbol'], 'time': time.time(), 'sl': order['sl'], 'tp': order['tp'], 'attempts': 0, 'is_pending_order': True}
+                                    pending_track[master_ticket] = {'symbol': order['symbol'], 'time': time.time(), 'price': order['price'], 'sl': order['sl'], 'tp': order['tp'], 'attempts': 0, 'is_pending_order': True}
                                     copied_pending_orders[master_ticket] = True
                                     log.log(f"Tracking pending #{master_ticket} with sl={order['sl']} tp={order['tp']}", "INFO")
 
-                        # Update SL/TP on existing pending orders if changed on master
+                        # Update Price/SL/TP on existing pending orders if changed on master
                         for master_ticket, order in master_orders.items():
                             if master_ticket in pending_track:
                                 tracked = pending_track[master_ticket]
                                 if not tracked.get('is_pending_order', False):
                                     continue
-                                    
+                                
+                                # Get values from master
+                                new_price = order['price']
                                 new_sl = order['sl'] if copy_sl else 0
                                 new_tp = order['tp'] if copy_tp else 0
+                                
+                                # Apply REVERSE mode SL/TP swap
+                                if copy_mode == 'reverse':
+                                    if new_sl > 0 and new_tp > 0:
+                                        new_sl, new_tp = new_tp, new_sl
+                                    elif new_sl > 0 and new_tp == 0:
+                                        new_tp = new_sl
+                                        new_sl = 0
+                                    elif new_tp > 0 and new_sl == 0:
+                                        new_sl = new_tp
+                                        new_tp = 0
+                                
+                                old_price = tracked.get('price', 0)
                                 old_sl = tracked.get('sl', 0)
                                 old_tp = tracked.get('tp', 0)
                                 
+                                price_diff = abs(new_price - old_price)
                                 sl_diff = abs(new_sl - old_sl)
                                 tp_diff = abs(new_tp - old_tp)
                                 
-                                if sl_diff > 0.00001 or tp_diff > 0.00001:
-                                    log.log(f"SL/TP CHANGED for #{master_ticket}: old_sl={old_sl} new_sl={new_sl} old_tp={old_tp} new_tp={new_tp}", "INFO")
+                                if price_diff > 0.00001 or sl_diff > 0.00001 or tp_diff > 0.00001:
+                                    log.log(f"PENDING MODIFIED #{master_ticket}: price={old_price}->{new_price} sl={old_sl}->{new_sl} tp={old_tp}->{new_tp}", "INFO")
                                     
                                     child_orders = mt5.orders_get()
                                     log.log(f"Child has {len(child_orders) if child_orders else 0} pending orders", "DEBUG")
@@ -907,11 +1025,16 @@ def main(pair_id, child_id):
                                     found = False
                                     if child_orders:
                                         for child_order in child_orders:
-                                            log.log(f"Checking child order {child_order.ticket} comment='{child_order.comment}'", "DEBUG")
                                             if child_order.comment.startswith(f"pending_{str(master_ticket)[:8]}"):
-                                                log.log(f"Found matching order {child_order.ticket}, modifying SL/TP", "INFO")
-                                                result = modify_pending_sltp(child_order.ticket, new_sl, new_tp, log)
+                                                log.log(f"Found matching order {child_order.ticket}, modifying", "INFO")
+                                                if price_diff > 0.00001:
+                                                    # Price changed - use modify_pending_price
+                                                    result = modify_pending_price(child_order.ticket, new_price, new_sl, new_tp, log)
+                                                else:
+                                                    # Only SL/TP changed
+                                                    result = modify_pending_sltp(child_order.ticket, new_sl, new_tp, log)
                                                 if result:
+                                                    pending_track[master_ticket]['price'] = order['price']
                                                     pending_track[master_ticket]['sl'] = order['sl']
                                                     pending_track[master_ticket]['tp'] = order['tp']
                                                 found = True
