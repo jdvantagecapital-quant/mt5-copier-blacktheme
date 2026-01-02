@@ -239,20 +239,34 @@ def open_trade(symbol, trade_type, volume, sl, tp, magic, comment, log, copy_mod
     """Open a new trade on child account with retry logic"""
     max_retries = 3
     
+    # Handle copy modes BEFORE the retry loop
+    original_type = trade_type
+    original_sl = sl
+    original_tp = tp
+    
+    if copy_mode == 'reverse':
+        trade_type = 1 if trade_type == 0 else 0
+        # CRITICAL: Also swap SL and TP for reverse mode
+        if sl > 0 and tp > 0:
+            sl, tp = tp, sl  # Swap both
+        elif sl > 0 and tp == 0:
+            tp = sl
+            sl = 0
+        elif tp > 0 and sl == 0:
+            sl = tp
+            tp = 0
+        log.log(f"REVERSE: Direction {original_type}->{trade_type}, SL {original_sl}->{sl}, TP {original_tp}->{tp}", "DEBUG")
+    elif copy_mode == 'only_buy':
+        if trade_type != 0:  # Not a BUY
+            log.log(f"Skipping SELL signal - only_buy mode active", "INFO")
+            return True
+    elif copy_mode == 'only_sell':
+        if trade_type != 1:  # Not a SELL
+            log.log(f"Skipping BUY signal - only_sell mode active", "INFO")
+            return True
+    
     for attempt in range(max_retries):
         try:
-            # Handle copy modes
-            if copy_mode == 'reverse':
-                trade_type = 1 if trade_type == 0 else 0
-            elif copy_mode == 'only_buy':
-                if trade_type != 0:  # Not a BUY
-                    log.log(f"Skipping SELL signal - only_buy mode active", "INFO")
-                    return True
-            elif copy_mode == 'only_sell':
-                if trade_type != 1:  # Not a SELL
-                    log.log(f"Skipping BUY signal - only_sell mode active", "INFO")
-                    return True
-            
             info = mt5.symbol_info(symbol)
             if info is None:
                 log.log(f"Symbol {symbol} not found, attempt {attempt+1}/{max_retries}", "WARN")
@@ -386,7 +400,8 @@ def modify_sltp(ticket, symbol, new_sl, new_tp, log):
         
         result = mt5.order_send(request)
         if result is None:
-            log.log(f"Modify SL/TP failed - no response", "ERROR")
+            err = mt5.last_error()
+            log.log(f"Modify SL/TP failed - no response. Error: {err}", "ERROR")
             return False
         
         if result.retcode == mt5.TRADE_RETCODE_DONE:
@@ -405,34 +420,48 @@ def modify_pending_sltp(ticket, new_sl, new_tp, log):
     try:
         orders = mt5.orders_get(ticket=ticket)
         if not orders:
+            log.log(f"Modify pending SL/TP - order {ticket} not found", "ERROR")
             return False
         
         order = orders[0]
         if abs(order.sl - new_sl) < 0.00001 and abs(order.tp - new_tp) < 0.00001:
             return True
         
-        request = {
-            "action": mt5.TRADE_ACTION_MODIFY,
-            "order": ticket,
-            "symbol": order.symbol,
-            "price": order.price_open,
-            "sl": new_sl,
-            "tp": new_tp,
-            "type_time": order.type_time,
-            "expiration": order.time_expiration,
-        }
+        # Try different filling modes - some brokers are picky
+        filling_modes = [mt5.ORDER_FILLING_RETURN, mt5.ORDER_FILLING_IOC, mt5.ORDER_FILLING_FOK]
         
-        result = mt5.order_send(request)
-        if result is None:
-            log.log(f"Modify pending SL/TP failed - no response", "ERROR")
-            return False
+        for filling_mode in filling_modes:
+            request = {
+                "action": mt5.TRADE_ACTION_MODIFY,
+                "order": ticket,
+                "symbol": order.symbol,
+                "price": order.price_open,
+                "type_time": order.type_time,
+                "expiration": order.time_expiration,
+                "type_filling": filling_mode,
+            }
+            # Only add SL/TP if they have valid values (not 0)
+            if new_sl > 0:
+                request["sl"] = new_sl
+            if new_tp > 0:
+                request["tp"] = new_tp
+            
+            result = mt5.order_send(request)
+            if result is None:
+                err = mt5.last_error()
+                log.log(f"Modify pending SL/TP failed with filling {filling_mode}: {err}", "DEBUG")
+                continue
+            
+            if result.retcode == mt5.TRADE_RETCODE_DONE:
+                log.log(f"Modified pending order {ticket}: SL={new_sl}, TP={new_tp}", "TRADE")
+                return True
+            else:
+                log.log(f"Modify pending SL/TP retcode {result.retcode}: {result.comment}", "DEBUG")
+                continue
         
-        if result.retcode == mt5.TRADE_RETCODE_DONE:
-            log.log(f"Modified pending order {ticket}: SL={new_sl}, TP={new_tp}", "TRADE")
-            return True
-        else:
-            log.log(f"Modify pending SL/TP failed: {result.retcode}", "ERROR")
-            return False
+        # All modes failed
+        log.log(f"Modify pending SL/TP failed - all filling modes tried", "ERROR")
+        return False
     except Exception as e:
         log.log(f"Modify pending SL/TP error: {e}", "ERROR")
         return False
@@ -442,32 +471,46 @@ def modify_pending_price(ticket, new_price, new_sl, new_tp, log):
     try:
         orders = mt5.orders_get(ticket=ticket)
         if not orders:
+            log.log(f"Modify pending price - order {ticket} not found", "ERROR")
             return False
         
         order = orders[0]
         
-        request = {
-            "action": mt5.TRADE_ACTION_MODIFY,
-            "order": ticket,
-            "symbol": order.symbol,
-            "price": new_price,
-            "sl": new_sl,
-            "tp": new_tp,
-            "type_time": order.type_time,
-            "expiration": order.time_expiration,
-        }
+        # Try different filling modes - some brokers are picky
+        filling_modes = [mt5.ORDER_FILLING_RETURN, mt5.ORDER_FILLING_IOC, mt5.ORDER_FILLING_FOK]
         
-        result = mt5.order_send(request)
-        if result is None:
-            log.log(f"Modify pending price failed - no response", "ERROR")
-            return False
+        for filling_mode in filling_modes:
+            request = {
+                "action": mt5.TRADE_ACTION_MODIFY,
+                "order": ticket,
+                "symbol": order.symbol,
+                "price": new_price,
+                "type_time": order.type_time,
+                "expiration": order.time_expiration,
+                "type_filling": filling_mode,
+            }
+            # Only add SL/TP if they have valid values (not 0)
+            if new_sl > 0:
+                request["sl"] = new_sl
+            if new_tp > 0:
+                request["tp"] = new_tp
+            
+            result = mt5.order_send(request)
+            if result is None:
+                err = mt5.last_error()
+                log.log(f"Modify pending price failed with filling {filling_mode}: {err}", "DEBUG")
+                continue
+            
+            if result.retcode == mt5.TRADE_RETCODE_DONE:
+                log.log(f"Modified pending order {ticket}: Price={new_price}, SL={new_sl}, TP={new_tp}", "TRADE")
+                return True
+            else:
+                log.log(f"Modify pending price retcode {result.retcode}: {result.comment}", "DEBUG")
+                continue
         
-        if result.retcode == mt5.TRADE_RETCODE_DONE:
-            log.log(f"Modified pending order {ticket}: Price={new_price}, SL={new_sl}, TP={new_tp}", "TRADE")
-            return True
-        else:
-            log.log(f"Modify pending price failed: {result.retcode} - {result.comment}", "ERROR")
-            return False
+        # All modes failed
+        log.log(f"Modify pending price failed - all filling modes tried", "ERROR")
+        return False
             
     except Exception as e:
         log.log(f"Modify pending price error: {e}", "ERROR")
@@ -476,6 +519,9 @@ def modify_pending_price(ticket, new_price, new_sl, new_tp, log):
 def open_pending_order(symbol, order_type, volume, price, sl, tp, master_ticket, comment, log, copy_mode='normal'):
     """Open a pending order on child account with copy mode support"""
     try:
+        # Log received parameters
+        log.log(f"open_pending_order CALLED: symbol={symbol}, type={order_type}, price={price}, sl={sl}, tp={tp}, mode={copy_mode}", "DEBUG")
+        
         # Apply ONLY_BUY / ONLY_SELL filter
         if copy_mode == 'only_buy' and order_type not in [2, 4]:  # Not BUY_LIMIT or BUY_STOP
             log.log(f"Skipping SELL pending order - only_buy mode active", "INFO")
@@ -486,40 +532,25 @@ def open_pending_order(symbol, order_type, volume, price, sl, tp, master_ticket,
         
         # Apply REVERSE mode type mapping
         original_type = order_type
+        original_price = price
+        original_sl = sl
+        original_tp = tp
+        
         if copy_mode == 'reverse':
-            # BUY_LIMIT(2) <-> SELL_LIMIT(3), BUY_STOP(4) <-> SELL_STOP(5)
-            reverse_map = {2: 3, 3: 2, 4: 5, 5: 4}
+            # Correct reverse mapping for pending orders:
+            # The key is to map to order types that TRIGGER at the same price level
+            # BUY_LIMIT(2) -> SELL_STOP(5) : both trigger when price DROPS to the level
+            # SELL_LIMIT(3) -> BUY_STOP(4) : both trigger when price RISES to the level
+            # BUY_STOP(4) -> SELL_LIMIT(3) : both trigger when price RISES to the level
+            # SELL_STOP(5) -> BUY_LIMIT(2) : both trigger when price DROPS to the level
+            reverse_map = {2: 5, 3: 4, 4: 3, 5: 2}
             order_type = reverse_map.get(order_type, order_type)
             
-            # Mirror the price around current market price for REVERSE
-            # BUY_STOP needs price ABOVE current, SELL_STOP needs BELOW, etc.
-            try:
-                tick = mt5.symbol_info_tick(symbol)
-                if tick:
-                    current_price = (tick.bid + tick.ask) / 2
-                    price_distance = abs(price - current_price)
-                    
-                    # Determine if we need to flip the price
-                    # SELL_STOP (5) -> BUY_STOP (4): price was below, now needs above
-                    # BUY_STOP (4) -> SELL_STOP (5): price was above, now needs below
-                    # SELL_LIMIT (3) -> BUY_LIMIT (2): price was above, now needs below
-                    # BUY_LIMIT (2) -> SELL_LIMIT (3): price was below, now needs above
-                    if price < current_price:
-                        price = current_price + price_distance
-                    else:
-                        price = current_price - price_distance
-                    
-                    # Round to symbol's price precision
-                    info = mt5.symbol_info(symbol)
-                    if info:
-                        digits = info.digits
-                        price = round(price, digits)
-                    
-                    log.log(f"REVERSE: Price mirrored to {price:.5f} (market: {current_price:.5f})", "DEBUG")
-            except Exception as e:
-                log.log(f"REVERSE: Price mirror error: {e}", "WARN")
+            # With this mapping, the SAME PRICE works correctly because:
+            # - BUY_LIMIT at 1.0900 (below current) -> SELL_STOP at 1.0900 (also needs below current) 
+            # - SELL_LIMIT at 1.1100 (above current) -> BUY_STOP at 1.1100 (also needs above current) 
             
-            # Also swap SL and TP for reverse mode
+            # Swap SL and TP for reverse mode
             if sl > 0 and tp > 0:
                 sl, tp = tp, sl
             elif sl > 0 and tp == 0:
@@ -528,7 +559,9 @@ def open_pending_order(symbol, order_type, volume, price, sl, tp, master_ticket,
             elif tp > 0 and sl == 0:
                 sl = tp
                 tp = 0
-            log.log(f"REVERSE: Pending type {original_type} -> {order_type}, SL/TP swapped", "DEBUG")
+            
+            order_names = {2: 'BUY_LIMIT', 3: 'SELL_LIMIT', 4: 'BUY_STOP', 5: 'SELL_STOP'}
+            log.log(f"REVERSE PENDING: {order_names.get(original_type, original_type)}->{order_names.get(order_type, order_type)}, Price={price:.5f}, SL {original_sl}->{sl}, TP {original_tp}->{tp}", "DEBUG")
         
         log.log(f"open_pending_order: {symbol} type={order_type} vol={volume} price={price} sl={sl} tp={tp}", "DEBUG")
         info = mt5.symbol_info(symbol)
@@ -553,21 +586,28 @@ def open_pending_order(symbol, order_type, volume, price, sl, tp, master_ticket,
             log.log(f"Unsupported pending order type: {order_type}", "WARN")
             return False
         
+        # Log the final SL/TP values being used
+        log.log(f"PENDING ORDER REQUEST: symbol={symbol}, type={order_type}, price={price:.5f}, SL={sl}, TP={tp}", "DEBUG")
+        
         request = {
             "action": mt5.TRADE_ACTION_PENDING,
             "symbol": symbol,
             "volume": volume,
             "type": mt5_order_type,
             "price": price,
-            "sl": sl if sl > 0 else 0.0,
-            "tp": tp if tp > 0 else 0.0,
             "deviation": 20,
             "magic": master_ticket % 1000000000,
             "comment": comment,
             "type_time": mt5.ORDER_TIME_GTC,
             "type_filling": mt5.ORDER_FILLING_IOC,
         }
+        # Only add SL/TP if > 0
+        if sl > 0:
+            request["sl"] = sl
+        if tp > 0:
+            request["tp"] = tp
         
+        log.log(f"Sending pending order with request: SL={request.get('sl', 0)}, TP={request.get('tp', 0)}", "DEBUG")
         result = mt5.order_send(request)
         if result is None:
             log.log(f"Pending order failed - no response", "ERROR")
@@ -789,6 +829,29 @@ def main(pair_id, child_id):
                     time.sleep(0.5)
                     continue
                 
+                # Check if we're within the active copy period
+                copy_period_enabled = child.get('copy_period_enabled', False)
+                active_from = child.get('active_from', '')
+                active_to = child.get('active_to', '')
+                
+                if copy_period_enabled and (active_from or active_to):
+                    from datetime import date
+                    today = date.today().isoformat()
+                    
+                    if active_from and today < active_from:
+                        if time.time() - last_log > 300:
+                            log.log(f"Copy period not started yet. Active from: {active_from}", "INFO")
+                            last_log = time.time()
+                        time.sleep(1)
+                        continue
+                    
+                    if active_to and today > active_to:
+                        if time.time() - last_log > 300:
+                            log.log(f"Copy period ended. Active until: {active_to}", "INFO")
+                            last_log = time.time()
+                        time.sleep(1)
+                        continue
+                
                 # Update settings from config
                 lot_multiplier = child.get('lot_multiplier', 1.0)
                 copy_mode = child.get('copy_mode', 'normal')
@@ -812,6 +875,7 @@ def main(pair_id, child_id):
                 ord_count = struct.unpack("<I", data[28:32])[0]
                 
                 master_now = {}
+                master_orders = {}  # Initialize here for pending exec detection
                 for i in range(pos_count):
                     pos_data = mm.read(POSITION_SIZE)
                     if len(pos_data) < POSITION_SIZE:
@@ -853,8 +917,32 @@ def main(pair_id, child_id):
                     else:
                         pending_track[master_ticket]['attempts'] += 1
                 
+                # Detect executed pending orders: if master_ticket is in copied_pending_orders
+                # but now appears as a POSITION (not pending order), it was executed
+                for master_ticket in list(copied_pending_orders.keys()):
+                    if master_ticket in master_now and master_ticket not in master_orders:
+                        # Pending order was executed and is now a position
+                        log.log(f"PENDING EXECUTED: Master #{master_ticket} pending order now a position", "INFO")
+                        del copied_pending_orders[master_ticket]
+                        if master_ticket in pending_track:
+                            del pending_track[master_ticket]
+                        # Find the child pending order and add to position tracking
+                        child_orders = mt5.orders_get()
+                        child_positions = mt5.positions_get()
+                        # Try to find child position by comment
+                        if child_positions:
+                            for cp in child_positions:
+                                if cp.comment and f"pending_{str(master_ticket)[:8]}" in cp.comment:
+                                    tracked_master[master_ticket] = cp.ticket
+                                    log.log(f"Mapped executed pending: master {master_ticket} -> child {cp.ticket}", "INFO")
+                                    break
+                
                 # Open new positions
                 for master_ticket, pos in master_now.items():
+                    # Skip if already tracked or pending
+                    if master_ticket in tracked_master or master_ticket in pending_track or master_ticket in copied_pending_orders:
+                        continue
+                    
                     # CHECK: Is this symbol in our allowed list?
                     incoming_symbol = pos['symbol'].upper().strip()
                     symbol_allowed = False
@@ -871,7 +959,8 @@ def main(pair_id, child_id):
                         tracked_master[master_ticket] = -1  # Mark as skipped
                         continue
                     
-                    if master_ticket not in tracked_master and master_ticket not in pending_track and master_ticket not in copied_pending_orders:
+                    # Process new trade (already verified not tracked above)
+                    if True:
                         # On first run with force_copy disabled, skip existing positions
                         if first_run and not force_copy:
                             tracked_master[master_ticket] = -1  # Mark as existed before start
@@ -923,6 +1012,12 @@ def main(pair_id, child_id):
                 if copy_sl or copy_tp:
                     for master_ticket, child_ticket in tracked_master.items():
                         if child_ticket > 0 and master_ticket in master_now:
+                            # Skip if we recently failed to modify this position
+                            fail_key = f"sltp_fail_{child_ticket}"
+                            if fail_key in pending_track:
+                                if time.time() - pending_track[fail_key].get('time', 0) < 5:
+                                    continue  # Wait 5 seconds before retrying
+                            
                             master_pos = master_now[master_ticket]
                             child_pos = mt5.positions_get(ticket=child_ticket)
                             if child_pos:
@@ -943,11 +1038,15 @@ def main(pair_id, child_id):
                                 
                                 # Check if SL/TP changed
                                 if abs(cp.sl - new_sl) > 0.00001 or abs(cp.tp - new_tp) > 0.00001:
-                                    modify_sltp(child_ticket, cp.symbol, new_sl, new_tp, log)
+                                    result = modify_sltp(child_ticket, cp.symbol, new_sl, new_tp, log)
+                                    if not result:
+                                        pending_track[fail_key] = {'time': time.time()}
                 # Close positions (if copy_close enabled)
                 if copy_close:
                     closed_tickets = []
-                    for master_ticket, child_ticket in tracked_master.items():
+                    
+                    # First, iterate over a copy of items to avoid modification during iteration
+                    for master_ticket, child_ticket in list(tracked_master.items()):
                         if master_ticket not in master_now:
                             if child_ticket > 0:
                                 child_pos = mt5.positions_get(ticket=child_ticket)
@@ -956,7 +1055,6 @@ def main(pair_id, child_id):
                                     log.log(f"CLOSE SIGNAL: Master closed {cp.symbol}", "SIGNAL")
                                     close_result = close_trade(cp.ticket, cp.symbol, cp.type, cp.volume, log)
                                     if close_result and close_result.get('success'):
-                                        # Save closed trade for dashboard
                                         import datetime
                                         save_child_closed_trade(pair_id, child_id, {
                                             'ticket': cp.ticket,
@@ -968,13 +1066,48 @@ def main(pair_id, child_id):
                                             'profit': cp.profit,
                                             'close_time': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                                         })
+                                else:
+                                    # Position already closed on child side
+                                    log.log(f"Child position {child_ticket} already closed", "DEBUG")
                             closed_tickets.append(master_ticket)
                     
                     for t in closed_tickets:
-                        del tracked_master[t]
+                        if t in tracked_master:
+                            del tracked_master[t]
                         if t in pending_track:
                             del pending_track[t]
-                
+                    
+                    # BULK CLOSE DETECTION: Close all child positions if master has zero
+                    tracked_count = len([t for t in tracked_master.values() if t > 0])
+                    if len(master_now) == 0 and tracked_count > 0:
+                        log.log(f"BULK CLOSE TRIGGERED: master has 0 positions, closing {tracked_count} tracked", "SIGNAL")
+                    if len(master_now) == 0:
+                        # Get all child positions that belong to our copy trades
+                        all_child_positions = mt5.positions_get()
+                        if all_child_positions:
+                            for cp in all_child_positions:
+                                # Check if this is one of our copied positions (has copy_ in comment or magic matches)
+                                if cp.comment and 'copy_' in cp.comment:
+                                    log.log(f"BULK CLOSE: Closing orphaned position {cp.symbol} #{cp.ticket}", "SIGNAL")
+                                    close_result = close_trade(cp.ticket, cp.symbol, cp.type, cp.volume, log)
+                                    if close_result and close_result.get('success'):
+                                        import datetime
+                                        save_child_closed_trade(pair_id, child_id, {
+                                            'ticket': cp.ticket, 'symbol': cp.symbol, 'type': cp.type,
+                                            'volume': cp.volume, 'price_open': cp.price_open,
+                                            'close_price': close_result.get('price', 0), 'profit': cp.profit,
+                                            'close_time': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                                        })
+                        
+                        # Clear tracked_master of any remaining entries with valid child tickets
+                        remaining = [(mt, ct) for mt, ct in tracked_master.items() if ct > 0]
+                        for master_ticket, child_ticket in remaining:
+                            del tracked_master[master_ticket]
+                            if master_ticket in pending_track:
+                                del pending_track[master_ticket]
+                        
+                        if remaining:
+                            log.log(f"BULK CLOSE: Cleared {len(remaining)} tracked entries", "INFO")
 
                 # Read and copy pending orders if enabled
                 if copy_pending:
@@ -1041,9 +1174,21 @@ def main(pair_id, child_id):
                                 )
                                 
                                 if success:
-                                    pending_track[master_ticket] = {'symbol': order['symbol'], 'time': time.time(), 'price': order['price'], 'sl': order['sl'], 'tp': order['tp'], 'attempts': 0, 'is_pending_order': True}
+                                    # Store ORIGINAL (unswapped) values for comparison with master
+                                    # The swap is applied when modifying, not when tracking
+                                    track_sl = order['sl'] if copy_sl else 0
+                                    track_tp = order['tp'] if copy_tp else 0
+                                    pending_track[master_ticket] = {
+                                        'symbol': order['symbol'], 
+                                        'time': time.time(), 
+                                        'price': order['price'], 
+                                        'sl': track_sl,  # ORIGINAL master SL
+                                        'tp': track_tp,  # ORIGINAL master TP
+                                        'attempts': 0, 
+                                        'is_pending_order': True
+                                    }
                                     copied_pending_orders[master_ticket] = True
-                                    log.log(f"Tracking pending #{master_ticket} with sl={order['sl']} tp={order['tp']}", "INFO")
+                                    log.log(f'Tracking pending #{master_ticket} with master sl={track_sl} tp={track_tp}', 'INFO')
 
                         # Update Price/SL/TP on existing pending orders if changed on master
                         for master_ticket, order in master_orders.items():
@@ -1052,51 +1197,63 @@ def main(pair_id, child_id):
                                 if not tracked.get('is_pending_order', False):
                                     continue
                                 
-                                # Get values from master
+                                # Get ORIGINAL values from master (unswapped)
                                 new_price = order['price']
-                                new_sl = order['sl'] if copy_sl else 0
-                                new_tp = order['tp'] if copy_tp else 0
+                                master_sl = order['sl'] if copy_sl else 0
+                                master_tp = order['tp'] if copy_tp else 0
                                 
-                                # Apply REVERSE mode SL/TP swap
-                                if copy_mode == 'reverse':
-                                    if new_sl > 0 and new_tp > 0:
-                                        new_sl, new_tp = new_tp, new_sl
-                                    elif new_sl > 0 and new_tp == 0:
-                                        new_tp = new_sl
-                                        new_sl = 0
-                                    elif new_tp > 0 and new_sl == 0:
-                                        new_sl = new_tp
-                                        new_tp = 0
-                                
+                                # Compare with ORIGINAL tracked values
                                 old_price = tracked.get('price', 0)
                                 old_sl = tracked.get('sl', 0)
                                 old_tp = tracked.get('tp', 0)
                                 
                                 price_diff = abs(new_price - old_price)
-                                sl_diff = abs(new_sl - old_sl)
-                                tp_diff = abs(new_tp - old_tp)
+                                sl_diff = abs(master_sl - old_sl)
+                                tp_diff = abs(master_tp - old_tp)
+                                
+                                # NOW apply swap for sending to child
+                                child_sl = master_sl
+                                child_tp = master_tp
+                                if copy_mode == 'reverse':
+                                    if master_sl > 0 and master_tp > 0:
+                                        child_sl, child_tp = master_tp, master_sl
+                                    elif master_sl > 0 and master_tp == 0:
+                                        child_tp = master_sl
+                                        child_sl = 0
+                                    elif master_tp > 0 and master_sl == 0:
+                                        child_sl = master_tp
+                                        child_tp = 0
                                 
                                 if price_diff > 0.00001 or sl_diff > 0.00001 or tp_diff > 0.00001:
-                                    log.log(f"PENDING MODIFIED #{master_ticket}: price={old_price}->{new_price} sl={old_sl}->{new_sl} tp={old_tp}->{new_tp}", "INFO")
+                                    # Rate limit: skip if last modification failed within 5 seconds
+                                    last_fail = tracked.get('last_modify_fail', 0)
+                                    if time.time() - last_fail < 5:
+                                        continue
+                                    
+                                    log.log(f"PENDING MODIFIED #{master_ticket}: price={old_price}->{new_price} master_sl={old_sl}->{master_sl} master_tp={old_tp}->{master_tp} child_sl={child_sl} child_tp={child_tp}", "INFO")
                                     
                                     child_orders = mt5.orders_get()
-                                    log.log(f"Child has {len(child_orders) if child_orders else 0} pending orders", "DEBUG")
                                     
                                     found = False
                                     if child_orders:
                                         for child_order in child_orders:
-                                            if child_order.comment.startswith(f"pending_{str(master_ticket)[:8]}"):
-                                                log.log(f"Found matching order {child_order.ticket}, modifying", "INFO")
+                                            # Match by comment containing master ticket
+                                            if f"pending_{str(master_ticket)[:8]}" in child_order.comment:
+                                                log.log(f"Found matching order {child_order.ticket}, modifying with child_sl={child_sl}, child_tp={child_tp}", "INFO")
                                                 if price_diff > 0.00001:
                                                     # Price changed - use modify_pending_price
-                                                    result = modify_pending_price(child_order.ticket, new_price, new_sl, new_tp, log)
+                                                    result = modify_pending_price(child_order.ticket, new_price, child_sl, child_tp, log)
                                                 else:
                                                     # Only SL/TP changed
-                                                    result = modify_pending_sltp(child_order.ticket, new_sl, new_tp, log)
+                                                    result = modify_pending_sltp(child_order.ticket, child_sl, child_tp, log)
                                                 if result:
+                                                    # Store ORIGINAL master values for next comparison
                                                     pending_track[master_ticket]['price'] = order['price']
-                                                    pending_track[master_ticket]['sl'] = order['sl']
-                                                    pending_track[master_ticket]['tp'] = order['tp']
+                                                    pending_track[master_ticket]['sl'] = master_sl
+                                                    pending_track[master_ticket]['tp'] = master_tp
+                                                    pending_track[master_ticket].pop('last_modify_fail', None)
+                                                else:
+                                                    pending_track[master_ticket]['last_modify_fail'] = time.time()
                                                 found = True
                                                 break
                                     

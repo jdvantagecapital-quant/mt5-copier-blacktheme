@@ -250,10 +250,18 @@ html[data-theme="light"] .form-input[type="date"]::-webkit-calendar-picker-indic
                     </div>
                 </div>
                 <div class="form-section">
-                    <div class="form-section-title time">Time Filters (Optional)</div>
-                    <div class="form-grid">
-                        <div class="form-group"><label class="form-label"><i class="fas fa-calendar"></i> Active From</label><input type="date" class="form-input" name="active_from" id="childActiveFrom"><span class="form-hint">Start copying from</span></div>
-                        <div class="form-group"><label class="form-label"><i class="fas fa-calendar-check"></i> Active Until</label><input type="date" class="form-input" name="active_to" id="childActiveTo"><span class="form-hint">Stop copying after</span></div>
+                    <div class="form-section-title time">Copy Period Settings</div>
+                    <div class="form-group" style="margin-bottom: 14px;">
+                        <label class="form-label"><i class="fas fa-toggle-on"></i> Enable Copy Period</label>
+                        <select class="form-select" name="copy_period_enabled" id="childCopyPeriodEnabled" onchange="toggleCopyPeriod()">
+                            <option value="false">Disabled (Always Copy)</option>
+                            <option value="true">Enabled (Copy within dates only)</option>
+                        </select>
+                        <span class="form-hint">When enabled, trades will only be copied within the specified date range</span>
+                    </div>
+                    <div id="copyPeriodDates" class="form-grid" style="display: none;">
+                        <div class="form-group"><label class="form-label"><i class="fas fa-calendar"></i> Active From</label><input type="date" class="form-input" name="active_from" id="childActiveFrom"><span class="form-hint">Start copying from this date</span></div>
+                        <div class="form-group"><label class="form-label"><i class="fas fa-calendar-check"></i> Active Until</label><input type="date" class="form-input" name="active_to" id="childActiveTo"><span class="form-hint">Stop copying after this date</span></div>
                     </div>
                 </div>
             </form>
@@ -418,6 +426,8 @@ function openChildModal(pairId) {
     document.getElementById('childCopySL').value = 'true';
     document.getElementById('childCopyTP').value = 'true';
     document.getElementById('childCopyPending').value = 'true';
+    document.getElementById('childCopyPeriodEnabled').value = 'false';
+    document.getElementById('copyPeriodDates').style.display = 'none';
     // Reset symbol container to just slot 1
     const container = document.getElementById('childSymbolContainer');
     container.innerHTML = '<div class="form-group"><label class="form-label"><i class="fas fa-link"></i> Child Symbol 1</label><input type="text" class="form-input" name="child_symbol_1" id="childSymbol1" placeholder="e.g. EURUSD.b"><span class="form-hint">For master symbol 1</span></div>';
@@ -464,6 +474,10 @@ function openEditChildModal(pairId, childId) {
         }
     }
     
+    // Set copy period enabled state
+    const hasPeriod = child.active_from || child.active_to || child.copy_period_enabled;
+    document.getElementById('childCopyPeriodEnabled').value = hasPeriod ? 'true' : 'false';
+    document.getElementById('copyPeriodDates').style.display = hasPeriod ? 'grid' : 'none';
     document.getElementById('childActiveFrom').value = child.active_from || '';
     document.getElementById('childActiveTo').value = child.active_to || '';
     document.getElementById('childModal').classList.add('active');
@@ -476,6 +490,18 @@ function closeChildModal() {
     const container = document.getElementById('childSymbolContainer');
     container.innerHTML = '<div class="form-group"><label class="form-label"><i class="fas fa-link"></i> Child Symbol 1</label><input type="text" class="form-input" name="child_symbol_1" id="childSymbol1" placeholder="e.g. EURUSD.b"><span class="form-hint">For master symbol 1</span></div>';
     editingChild = null;
+}
+
+function toggleCopyPeriod() {
+    const enabled = document.getElementById('childCopyPeriodEnabled').value === 'true';
+    const datesDiv = document.getElementById('copyPeriodDates');
+    if (enabled) {
+        datesDiv.style.display = 'grid';
+    } else {
+        datesDiv.style.display = 'none';
+        document.getElementById('childActiveFrom').value = '';
+        document.getElementById('childActiveTo').value = '';
+    }
 }
 
 function addMasterSymbolSlot() {
@@ -561,6 +587,12 @@ async function saveChild() {
     if (data.copy_sl) data.copy_sl = data.copy_sl === 'true';
     if (data.copy_tp) data.copy_tp = data.copy_tp === 'true';
     if (data.copy_pending) data.copy_pending = data.copy_pending === 'true';
+    if (data.copy_period_enabled) data.copy_period_enabled = data.copy_period_enabled === 'true';
+    // Clear dates if period is disabled
+    if (!data.copy_period_enabled) {
+        data.active_from = '';
+        data.active_to = '';
+    }
     if (data.symbol_override !== undefined) {
         data.symbol_override = data.symbol_override.trim();
         if (!data.symbol_override) { delete data.symbol_override; }

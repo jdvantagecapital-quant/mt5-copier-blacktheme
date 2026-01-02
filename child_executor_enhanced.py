@@ -166,6 +166,32 @@ def open_trade(symbol, trade_type, volume, sl, tp, magic, comment, log, copy_mod
         if symbol != original_symbol:
             log.log(f"Using mapped symbol: {original_symbol} -> {symbol}", "INFO")
     
+    # Handle copy modes BEFORE the retry loop
+    original_type = trade_type
+    original_sl = sl
+    original_tp = tp
+    
+    if copy_mode == 'reverse':
+        trade_type = 1 if trade_type == 0 else 0
+        # CRITICAL: Also swap SL and TP for reverse mode
+        if sl > 0 and tp > 0:
+            sl, tp = tp, sl  # Swap both
+        elif sl > 0 and tp == 0:
+            tp = sl
+            sl = 0
+        elif tp > 0 and sl == 0:
+            sl = tp
+            tp = 0
+        log.log(f"REVERSE: Direction {original_type}->{trade_type}, SL {original_sl}->{sl}, TP {original_tp}->{tp}", "DEBUG")
+    elif copy_mode == 'only_buy':
+        if trade_type != 0:
+            log.log(f"Skipping SELL signal - only_buy mode active", "INFO")
+            return True
+    elif copy_mode == 'only_sell':
+        if trade_type != 1:
+            log.log(f"Skipping BUY signal - only_sell mode active", "INFO")
+            return True
+    
     max_retries = 3
     
     for attempt in range(max_retries):
