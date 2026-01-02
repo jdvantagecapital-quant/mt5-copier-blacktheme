@@ -738,7 +738,7 @@ def create_app(process_manager):
                 try:
                     with open(master_log, 'r') as f:
                         master_activities = json.load(f)
-                    for log in master_activities[:500]:
+                    for log in master_activities:
                         all_logs.append({
                             'timestamp': f"{log.get('date', '')} {log.get('time', '')}".strip(),
                             'type': log.get('type', 'info'),
@@ -769,7 +769,7 @@ def create_app(process_manager):
                 if os.path.exists(child_log):
                     try:
                         with open(child_log, 'r') as f:
-                            lines = f.readlines()[-500:]
+                            lines = f.readlines()[-5000:]
                         for line in reversed(lines):
                             line = line.strip()
                             if not line:
@@ -988,16 +988,36 @@ def create_app(process_manager):
         except:
             pass
         
-        # Read master activities from JSON log
+        # Read master activities - try text log first (more history), then JSON
         try:
             logs_dir = os.path.join(os.getenv('LOCALAPPDATA'), 'JD_MT5_TradeCopier', 'logs')
-            master_activity_file = os.path.join(logs_dir, f'master_activity_{pair_id}.json')
+            master_text_log = os.path.join(logs_dir, f'master_{pair_id}.log')
+            master_json_file = os.path.join(logs_dir, f'master_activity_{pair_id}.json')
             
-            if os.path.exists(master_activity_file):
-                with open(master_activity_file, 'r', encoding='utf-8') as f:
+            # Prefer text log (has full history like child logs)
+            if os.path.exists(master_text_log):
+                with open(master_text_log, 'r', encoding='utf-8', errors='ignore') as f:
+                    lines = f.readlines()[-5000:]  # Last 5000 lines
+                    for line in reversed(lines):
+                        if any(tag in line for tag in ['[SIGNAL]', '[OPEN]', '[CLOSE]', '[ERROR]', '[WARN]', '[INFO]', '[DEBUG]']):
+                            log_type = 'INFO'
+                            if '[CLOSE]' in line: log_type = 'CLOSE'
+                            elif '[SIGNAL]' in line: log_type = 'SIGNAL'
+                            elif '[OPEN]' in line: log_type = 'TRADE'
+                            elif '[ERROR]' in line: log_type = 'ERROR'
+                            elif '[WARN]' in line: log_type = 'WARN'
+                            elif '[DEBUG]' in line: log_type = 'DEBUG'
+                            
+                            result['activities']['master'].append({
+                                'time': line[1:24] if len(line) > 24 else '',
+                                'message': line.strip(),
+                                'type': log_type
+                            })
+            # Fall back to JSON if text log doesn't exist
+            elif os.path.exists(master_json_file):
+                with open(master_json_file, 'r', encoding='utf-8') as f:
                     activities = json.load(f)
-                    # Activities already in correct format: {time, date, message, type}
-                    for act in activities[:20]:
+                    for act in activities:
                         result['activities']['master'].append({
                             'time': f"{act.get('date', '')} {act.get('time', '')}",
                             'message': act.get('message', ''),
@@ -1052,33 +1072,43 @@ def create_app(process_manager):
             except Exception as e:
                 print(f"[WARN] Error reading child {child_id}: {e}")
             
-            # Read child activities from log file
+            # Read child activities - try JSON first, then fall back to log file
             try:
                 logs_dir = os.path.join(os.getenv('LOCALAPPDATA'), 'JD_MT5_TradeCopier', 'logs')
+                json_file = os.path.join(logs_dir, f'child_activity_{pair_id}_{child_id}.json')
                 log_file = os.path.join(logs_dir, f'child_{pair_id}_{child_id}.log')
                 
-                if os.path.exists(log_file):
+                # Try JSON first (faster and structured)
+                if os.path.exists(json_file):
+                    with open(json_file, 'r', encoding='utf-8') as f:
+                        activities = json.load(f)
+                        for act in activities:
+                            result['activities'][child_id].append({
+                                'time': f"{act.get('date', '')} {act.get('time', '')}",
+                                'message': act.get('message', ''),
+                                'type': act.get('type', 'INFO')
+                            })
+                # Fall back to text log file
+                elif os.path.exists(log_file):
                     with open(log_file, 'r', encoding='utf-8', errors='ignore') as f:
-                        lines = f.readlines()[-50:]
+                        lines = f.readlines()[-5000:]
                         for line in reversed(lines):
-                            if any(tag in line for tag in ['[SIGNAL]', '[OPEN]', '[CLOSE]', '[ERROR]', '[WARN]', '[INFO]']):
-                                # Parse log level
+                            if any(tag in line for tag in ['[SIGNAL]', '[OPEN]', '[CLOSE]', '[ERROR]', '[WARN]', '[INFO]', '[DEBUG]']):
                                 log_type = 'INFO'
                                 if '[CLOSE]' in line: log_type = 'CLOSE'
                                 elif '[SIGNAL]' in line: log_type = 'SIGNAL'
                                 elif '[OPEN]' in line: log_type = 'TRADE'
                                 elif '[ERROR]' in line: log_type = 'ERROR'
                                 elif '[WARN]' in line: log_type = 'WARN'
+                                elif '[DEBUG]' in line: log_type = 'DEBUG'
                                 
                                 result['activities'][child_id].append({
                                     'time': line[1:20] if len(line) > 20 else '',
                                     'message': line.strip(),
                                     'type': log_type
                                 })
-                            if len(result['activities'][child_id]) >= 20:
-                                break
-            except:
-                pass
+            except Exception as e:
+                print(f"[WARN] Error reading child {child_id} activities: {e}")
             
             # Read child closed trades with date filtering
             try:
@@ -1339,15 +1369,36 @@ def create_app(process_manager):
         result['balance'] = result['master']['balance']
         result['equity'] = result['master']['equity']
         
-        # Get master activities from log
+        # Get master activities from log - prefer text log for full history
         try:
             logs_dir = os.path.join(os.getenv('LOCALAPPDATA'), 'JD_MT5_TradeCopier', 'logs')
-            master_activity_file = os.path.join(logs_dir, f'master_activity_{pair_id}.json')
+            master_text_log = os.path.join(logs_dir, f'master_{pair_id}.log')
+            master_json_file = os.path.join(logs_dir, f'master_activity_{pair_id}.json')
             
-            if os.path.exists(master_activity_file):
-                with open(master_activity_file, 'r', encoding='utf-8') as f:
+            # Prefer text log (has full history like child logs)
+            if os.path.exists(master_text_log):
+                with open(master_text_log, 'r', encoding='utf-8', errors='ignore') as f:
+                    lines = f.readlines()[-5000:]  # Last 5000 lines
+                    for line in reversed(lines):
+                        if any(tag in line for tag in ['[SIGNAL]', '[OPEN]', '[CLOSE]', '[ERROR]', '[WARN]', '[INFO]', '[DEBUG]']):
+                            log_type = 'INFO'
+                            if '[CLOSE]' in line: log_type = 'CLOSE'
+                            elif '[SIGNAL]' in line: log_type = 'SIGNAL'
+                            elif '[OPEN]' in line: log_type = 'TRADE'
+                            elif '[ERROR]' in line: log_type = 'ERROR'
+                            elif '[WARN]' in line: log_type = 'WARN'
+                            elif '[DEBUG]' in line: log_type = 'DEBUG'
+                            
+                            result['activities']['master'].append({
+                                'time': line[1:24] if len(line) > 24 else '',
+                                'message': line.strip(),
+                                'type': log_type
+                            })
+            # Fall back to JSON if text log doesn't exist
+            elif os.path.exists(master_json_file):
+                with open(master_json_file, 'r', encoding='utf-8') as f:
                     activities = json.load(f)
-                    for act in activities[:20]:
+                    for act in activities:
                         result['activities']['master'].append({
                             'time': f"{act.get('date', '')} {act.get('time', '')}",
                             'message': act.get('message', ''),
@@ -1392,7 +1443,7 @@ def create_app(process_manager):
                 
                 if os.path.exists(log_file):
                     with open(log_file, 'r', encoding='utf-8', errors='ignore') as f:
-                        lines = f.readlines()[-50:]
+                        lines = f.readlines()[-5000:]
                         for line in reversed(lines):
                             if any(tag in line for tag in ['[SIGNAL]', '[OPEN]', '[CLOSE]', '[ERROR]', '[WARN]', '[INFO]']):
                                 log_type = 'INFO'
@@ -1407,7 +1458,7 @@ def create_app(process_manager):
                                     'message': line.strip(),
                                     'type': log_type
                                 })
-                            if len(result['activities'][child_id]) >= 20:
+                            if False:  # No limit
                                 break
             except:
                 pass

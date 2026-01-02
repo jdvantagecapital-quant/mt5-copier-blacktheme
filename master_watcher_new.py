@@ -36,13 +36,44 @@ def get_data_dir():
     return data_dir
 
 DATA_DIR = get_data_dir()
+
+# Log rotation settings
+MAX_LOG_SIZE_MB = 50  # Rotate when log exceeds 50MB
+MAX_ROTATED_FILES = 5  # Keep 5 archived logs
+
+def rotate_log_if_needed(log_file):
+    """Rotate log file if it exceeds MAX_LOG_SIZE_MB"""
+    try:
+        if not os.path.exists(log_file):
+            return
+        
+        size_mb = os.path.getsize(log_file) / (1024 * 1024)
+        if size_mb < MAX_LOG_SIZE_MB:
+            return
+        
+        # Rotate existing archives
+        for i in range(MAX_ROTATED_FILES - 1, 0, -1):
+            old_file = f"{log_file}.{i}"
+            new_file = f"{log_file}.{i+1}"
+            if os.path.exists(old_file):
+                if i + 1 > MAX_ROTATED_FILES:
+                    os.remove(old_file)
+                else:
+                    os.rename(old_file, new_file)
+        
+        # Rotate current log to .1
+        os.rename(log_file, f"{log_file}.1")
+        print(f"[INFO] Rotated log file: {os.path.basename(log_file)} ({size_mb:.1f}MB)")
+    except Exception as e:
+        print(f"[WARN] Log rotation failed: {e}")
+
 CONFIG_FILE = os.path.join(DATA_DIR, "config.json")
 MAX_POSITIONS = 50
 MAX_ORDERS = 20  # Max pending orders
 POSITION_SIZE = 48
 ORDER_SIZE = 64  # Pending order size: ticket(8)+type(1)+volume(8)+price(8)+sl(8)+tp(8)+symbol(15)+padding(8)
 MASTER_ACTIVITY_LOG_TEMPLATE = "master_activity_{pair_id}.json"
-MAX_ACTIVITY_LOGS = 100
+MAX_ACTIVITY_LOGS = 10000
 
 # Shared memory format:
 # Header: timestamp(8) + balance(8) + equity(8) + pos_count(4) + order_count(4) = 32 bytes
@@ -51,7 +82,20 @@ MAX_ACTIVITY_LOGS = 100
 HEADER_SIZE = 32
 
 def save_master_activity(pair_id, message, log_type="INFO"):
-    """Save master activity to JSON file for dashboard"""
+    """Save master activity to both JSON and text log files for dashboard"""
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
+    
+    # Write to text log file (with rotation when too large)
+    try:
+        text_log_file = os.path.join(DATA_DIR, 'logs', f'master_{pair_id}.log')
+        rotate_log_if_needed(text_log_file)  # Check if rotation needed
+        line = f"[{timestamp}] [{log_type}] {message}"
+        with open(text_log_file, 'a', encoding='utf-8') as f:
+            f.write(line + "\n")
+    except:
+        pass
+    
+    # Also write to JSON for quick access (limited to MAX_ACTIVITY_LOGS)
     try:
         log_file = os.path.join(DATA_DIR, 'logs', f'master_activity_{pair_id}.json')
         activities = []

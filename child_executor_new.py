@@ -46,6 +46,37 @@ ORDER_SIZE = 64       # Pending order size
 HEADER_SIZE = 32      # timestamp(8) + balance(8) + equity(8) + pos_count(4) + order_count(4)
 MAX_POSITIONS = 50    # Max positions from master
 CONFIG_FILE = os.path.join(DATA_DIR, "config.json")
+
+# Log rotation settings
+MAX_LOG_SIZE_MB = 50  # Rotate when log exceeds 50MB
+MAX_ROTATED_FILES = 5  # Keep 5 archived logs
+
+def rotate_log_if_needed(log_file):
+    """Rotate log file if it exceeds MAX_LOG_SIZE_MB"""
+    try:
+        if not os.path.exists(log_file):
+            return
+        
+        size_mb = os.path.getsize(log_file) / (1024 * 1024)
+        if size_mb < MAX_LOG_SIZE_MB:
+            return
+        
+        # Rotate existing archives
+        for i in range(MAX_ROTATED_FILES - 1, 0, -1):
+            old_file = f"{log_file}.{i}"
+            new_file = f"{log_file}.{i+1}"
+            if os.path.exists(old_file):
+                if i + 1 > MAX_ROTATED_FILES:
+                    os.remove(old_file)
+                else:
+                    os.rename(old_file, new_file)
+        
+        # Rotate current log to .1
+        os.rename(log_file, f"{log_file}.1")
+        print(f"[INFO] Rotated log file: {os.path.basename(log_file)} ({size_mb:.1f}MB)")
+    except Exception as e:
+        print(f"[WARN] Log rotation failed: {e}")
+
 STATS_FILE = os.path.join(DATA_DIR, "pair_stats.json")
 
 def load_stats():
@@ -92,8 +123,37 @@ class TradeLog:
         line = f"[{timestamp}] [{level}] {message}"
         print(line)
         try:
+            rotate_log_if_needed(self.log_file)  # Check if rotation needed
             with open(self.log_file, 'a', encoding='utf-8') as f:
                 f.write(line + "\n")
+        except:
+            pass
+        # Also save to JSON for dashboard
+        self._save_activity(message, level)
+    
+    def _save_activity(self, message, level):
+        """Save activity to JSON file for dashboard"""
+        try:
+            json_file = os.path.join(self.log_dir, f"child_activity_{self.pair_id}_{self.child_id}.json")
+            activities = []
+            if os.path.exists(json_file):
+                try:
+                    with open(json_file, 'r', encoding='utf-8') as f:
+                        activities = json.load(f)
+                except:
+                    activities = []
+            
+            activity = {
+                "time": datetime.now().strftime("%H:%M:%S"),
+                "date": datetime.now().strftime("%Y-%m-%d"),
+                "message": message,
+                "type": level
+            }
+            activities.insert(0, activity)
+            activities = activities[:10000]  # Keep last 10000 entries
+            
+            with open(json_file, 'w', encoding='utf-8') as f:
+                json.dump(activities, f)
         except:
             pass
 

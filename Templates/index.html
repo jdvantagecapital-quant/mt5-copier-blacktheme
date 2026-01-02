@@ -607,7 +607,7 @@ function buildCard(cardId, type, account, balance, equity, trades, pnl, connecte
     html += '<div class="tab-panel ' + (currentTab === 'closed' ? 'show' : '') + '" id="' + cardId + '_closed"><div class="trades-tbl">';
     html += '<div class="tbl-head"><span>Symbol</span><span>Type</span><span>Lots</span><span>Close Time</span><span style="text-align:right">P/L</span></div>';
     if (closedTrades && closedTrades.length > 0) {
-        closedTrades.slice(0, 50).forEach(t => {
+        closedTrades.slice(0, 500).forEach(t => {
             const dir = (t.type === 0 || t.type === 'buy' || t.type === 'BUY') ? 'buy' : 'sell';
             const profit = parseFloat(t.profit) || 0;
             const closeTime = t.close_time || t.time_close || t.time || '';
@@ -628,7 +628,7 @@ function buildCard(cardId, type, account, balance, equity, trades, pnl, connecte
     // Activity tab - FULL ACTIVITY LOG
     html += '<div class="tab-panel ' + (currentTab === 'activity' ? 'show' : '') + '" id="' + cardId + '_activity"><div class="activity-panel">';
     if (activities && activities.length > 0) {
-        activities.slice(0, 100).forEach(act => {
+        activities.slice(0, 5000).forEach(act => {
             const a = parseActivity(act);
             const icons = { 
                 TRADE: 'arrow-up', CLOSE: 'arrow-down', SIGNAL: 'bolt', 
