@@ -327,7 +327,8 @@ def main(pair_id):
                             'type': order.type, 'volume': order.volume_current,
                             'price': order.price_open, 'sl': order.sl, 'tp': order.tp
                         }
-                        order_type = ['BUY_LIMIT','SELL_LIMIT','BUY_STOP','SELL_STOP','BUY_STOP_LIMIT','SELL_STOP_LIMIT'][order.type - 2] if order.type >= 2 else 'UNKNOWN'
+                        order_types = {2: 'BUY_LIMIT', 3: 'SELL_LIMIT', 4: 'BUY_STOP', 5: 'SELL_STOP', 6: 'BUY_STOP_LIMIT', 7: 'SELL_STOP_LIMIT'}
+                        order_type = order_types.get(order.type, f'TYPE_{order.type}')
                         save_master_activity(pair_id, f"New pending: {order_type} {order.volume_current} {order.symbol} @ {order.price_open} SL={order.sl} TP={order.tp}", "SIGNAL")
                     else:
                         # Update SL/TP if changed

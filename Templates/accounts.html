@@ -549,6 +549,20 @@ async function savePair() {
     
     if (data.master_account) data.master_account = parseInt(data.master_account) || 0;
     
+    // FIX: Renumber master symbols to be consecutive (1,2,3...) to avoid gaps
+    const masterSymbols = [];
+    for (let i = 1; i <= 20; i++) {
+        const key = 'master_symbol_' + i;
+        if (data[key] && data[key].trim()) {
+            masterSymbols.push(data[key].trim().toUpperCase());
+        }
+        delete data[key]; // Remove old key
+    }
+    // Re-add with consecutive numbering
+    masterSymbols.forEach((sym, idx) => {
+        data['master_symbol_' + (idx + 1)] = sym;
+    });
+    
     const pairId = document.getElementById('pairEditId').value;
     const isEdit = pairId && pairId.length > 0;
     
@@ -597,6 +611,20 @@ async function saveChild() {
         data.symbol_override = data.symbol_override.trim();
         if (!data.symbol_override) { delete data.symbol_override; }
     }
+    
+    // FIX: Renumber child symbols to be consecutive (1,2,3...) to avoid gaps
+    const childSymbols = [];
+    for (let i = 1; i <= 20; i++) {
+        const key = 'child_symbol_' + i;
+        if (data[key] && data[key].trim()) {
+            childSymbols.push(data[key].trim().toUpperCase());
+        }
+        delete data[key]; // Remove old key
+    }
+    // Re-add with consecutive numbering
+    childSymbols.forEach((sym, idx) => {
+        data['child_symbol_' + (idx + 1)] = sym;
+    });
 
     
     try {

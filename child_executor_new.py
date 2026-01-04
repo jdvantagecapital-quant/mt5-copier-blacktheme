@@ -831,26 +831,35 @@ def main(pair_id, child_id):
                 
                 # Check if we're within the active copy period
                 copy_period_enabled = child.get('copy_period_enabled', False)
-                active_from = child.get('active_from', '')
-                active_to = child.get('active_to', '')
+                active_from = child.get('active_from', '') or ''
+                active_to = child.get('active_to', '') or ''
                 
-                if copy_period_enabled and (active_from or active_to):
+                # Strip whitespace and validate dates
+                active_from = active_from.strip() if isinstance(active_from, str) else ''
+                active_to = active_to.strip() if isinstance(active_to, str) else ''
+                
+                # Check copy period if enabled OR if dates are explicitly set
+                if copy_period_enabled or (active_from and len(active_from) >= 10) or (active_to and len(active_to) >= 10):
                     from datetime import date
-                    today = date.today().isoformat()
+                    today = date.today().isoformat()  # Format: YYYY-MM-DD
                     
-                    if active_from and today < active_from:
-                        if time.time() - last_log > 300:
-                            log.log(f"Copy period not started yet. Active from: {active_from}", "INFO")
-                            last_log = time.time()
-                        time.sleep(1)
-                        continue
+                    # Only check active_from if valid date string
+                    if active_from and len(active_from) >= 10:
+                        if today < active_from:
+                            if time.time() - last_log > 300:
+                                log.log(f"Copy period not started. From: {active_from}, Today: {today}", "INFO")
+                                last_log = time.time()
+                            time.sleep(1)
+                            continue
                     
-                    if active_to and today > active_to:
-                        if time.time() - last_log > 300:
-                            log.log(f"Copy period ended. Active until: {active_to}", "INFO")
-                            last_log = time.time()
-                        time.sleep(1)
-                        continue
+                    # Only check active_to if valid date string
+                    if active_to and len(active_to) >= 10:
+                        if today > active_to:
+                            if time.time() - last_log > 300:
+                                log.log(f"Copy period ended. Until: {active_to}, Today: {today}", "INFO")
+                                last_log = time.time()
+                            time.sleep(1)
+                            continue
                 
                 # Update settings from config
                 lot_multiplier = child.get('lot_multiplier', 1.0)
@@ -1086,18 +1095,30 @@ def main(pair_id, child_id):
                         all_child_positions = mt5.positions_get()
                         if all_child_positions:
                             for cp in all_child_positions:
-                                # Check if this is one of our copied positions (has copy_ in comment or magic matches)
-                                if cp.comment and 'copy_' in cp.comment:
-                                    log.log(f"BULK CLOSE: Closing orphaned position {cp.symbol} #{cp.ticket}", "SIGNAL")
-                                    close_result = close_trade(cp.ticket, cp.symbol, cp.type, cp.volume, log)
-                                    if close_result and close_result.get('success'):
-                                        import datetime
-                                        save_child_closed_trade(pair_id, child_id, {
-                                            'ticket': cp.ticket, 'symbol': cp.symbol, 'type': cp.type,
-                                            'volume': cp.volume, 'price_open': cp.price_open,
-                                            'close_price': close_result.get('price', 0), 'profit': cp.profit,
-                                            'close_time': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                                        })
+                                # Check if this is one of our copied positions
+                                # Match by: comment contains 'copy_' OR 'pending_' OR magic number matches
+                                is_our_position = False
+                                if cp.comment and ('copy_' in cp.comment or 'pending_' in cp.comment):
+                                    is_our_position = True
+                                if cp.ticket in tracked_master.values():
+                                    is_our_position = True
+                                if cp.magic in tracked_master.keys():
+                                    is_our_position = True
+                                
+                                if is_our_position:
+                                    log.log(f"BULK CLOSE: Closing position {cp.symbol} #{cp.ticket}", "SIGNAL")
+                                    try:
+                                        close_result = close_trade(cp.ticket, cp.symbol, cp.type, cp.volume, log)
+                                        if close_result and close_result.get('success'):
+                                            import datetime
+                                            save_child_closed_trade(pair_id, child_id, {
+                                                'ticket': cp.ticket, 'symbol': cp.symbol, 'type': cp.type,
+                                                'volume': cp.volume, 'price_open': cp.price_open,
+                                                'close_price': close_result.get('price', 0), 'profit': cp.profit,
+                                                'close_time': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                                            })
+                                    except Exception as e:
+                                        log.log(f"BULK CLOSE ERROR: {e}", "ERROR")
                         
                         # Clear tracked_master of any remaining entries with valid child tickets
                         remaining = [(mt, ct) for mt, ct in tracked_master.items() if ct > 0]
