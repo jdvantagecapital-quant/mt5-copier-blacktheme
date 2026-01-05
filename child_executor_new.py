@@ -47,6 +47,17 @@ HEADER_SIZE = 32      # timestamp(8) + balance(8) + equity(8) + pos_count(4) + o
 MAX_POSITIONS = 50    # Max positions from master
 CONFIG_FILE = os.path.join(DATA_DIR, "config.json")
 
+
+def to_bool(value, default=True):
+    """Convert config value to boolean, handling string 'true'/'false' from JSON"""
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.lower() in ('true', 'yes', '1', 'on')
+    return bool(value)
+
 # Log rotation settings
 MAX_LOG_SIZE_MB = 50  # Rotate when log exceeds 50MB
 MAX_ROTATED_FILES = 5  # Keep 5 archived logs
@@ -209,17 +220,38 @@ def write_child_data(pair_id, child_id, balance, equity, positions):
         pass
 
 
-def map_symbol(master_symbol, child_config):
-    """Map master symbol to child symbol based on symbol mapping configuration"""
+def map_symbol(master_symbol, child_config, pair_config=None):
+    """
+    Map master symbol to child symbol based on child's symbol mapping configuration.
+    
+    New format: child['symbols'] = [{master: 'EURUSD', child: 'EURUSD.b'}, ...]
+    Old format (backward compat): master_symbol_X in pair, child_symbol_X in child
+    """
     try:
         master_sym_upper = master_symbol.upper().strip()
         
-        # Check the 5 symbol mapping slots
+        # NEW FORMAT: Check child's own symbols list
+        child_symbols = child_config.get('symbols', [])
+        if child_symbols and isinstance(child_symbols, list):
+            for mapping in child_symbols:
+                if isinstance(mapping, dict):
+                    m_sym = mapping.get('master', '').upper().strip()
+                    c_sym = mapping.get('child', '').strip()
+                    if m_sym == master_sym_upper and c_sym:
+                        return c_sym
+        
+        # OLD FORMAT (backward compatibility): Check numbered slots
+        # Master symbols from pair, child symbols from child
         for i in range(1, 21):
-            master_slot_key = f'master_symbol_{i}'
+            # Get master symbol from pair config (if provided) or child config
+            master_slot = ''
+            if pair_config:
+                master_slot = pair_config.get(f'master_symbol_{i}', '').upper().strip()
+            if not master_slot:
+                master_slot = child_config.get(f'master_symbol_{i}', '').upper().strip()
+            
             child_slot_key = f'child_symbol_{i}'
             
-            master_slot = child_config.get(master_slot_key, '').upper().strip()
             if master_slot and master_slot == master_sym_upper:
                 child_sym = child_config.get(child_slot_key, '').strip()
                 if child_sym:
@@ -749,18 +781,32 @@ def main(pair_id, child_id):
     
     # Validate symbols are configured  
     has_symbols = False
-    for i in range(1, 21):
-        master_sym = pair.get(f'master_symbol_{i}', '').strip().upper()
-        child_sym = child.get(f'child_symbol_{i}', '').strip().upper()
-        # Both must exist AND they must match
-        if master_sym and child_sym and master_sym == child_sym:
-            has_symbols = True
-            break
     
+    # NEW FORMAT: Check child's own symbols list first
+    child_symbols = child.get('symbols', [])
+    if child_symbols and isinstance(child_symbols, list):
+        for mapping in child_symbols:
+            if isinstance(mapping, dict):
+                m_sym = mapping.get('master', '').strip()
+                c_sym = mapping.get('child', '').strip()
+                if m_sym and c_sym:
+                    has_symbols = True
+                    log.log(f"Symbol mapping: {m_sym} -> {c_sym}", "INFO")
+        log.log(f"Total symbol mappings configured: {len([m for m in child_symbols if isinstance(m, dict) and m.get('master') and m.get('child')])}", "INFO")
+    
+    # OLD FORMAT (backward compat): Check numbered slots
     if not has_symbols:
-        log.log('ERROR: No symbols configured for this pair/child!', 'ERROR')
-        log.log('Please add at least one symbol pair in the dashboard to continue.', 'ERROR')
-        log.log('Go to Accounts  Edit Pair  Add Symbol', 'ERROR')
+        for i in range(1, 21):
+            master_sym = pair.get(f'master_symbol_{i}', '').strip().upper()
+            child_sym = child.get(f'child_symbol_{i}', '').strip().upper()
+            if master_sym and child_sym:
+                has_symbols = True
+                log.log(f"Symbol slot {i}: {master_sym} -> {child_sym}", "INFO")
+
+    if not has_symbols:
+        log.log('ERROR: No symbols configured for this child account!', 'ERROR')
+        log.log('Please add at least one symbol mapping in the child account settings.', 'ERROR')
+        log.log('Go to Accounts -> Edit Child -> Add Symbol (set both Master and Child symbols)', 'ERROR')
         return
     # Initialize MT5
     init_args = {}
@@ -864,13 +910,13 @@ def main(pair_id, child_id):
                 # Update settings from config
                 lot_multiplier = child.get('lot_multiplier', 1.0)
                 copy_mode = child.get('copy_mode', 'normal')
-                copy_close = child.get('copy_close', True)
-                force_copy = child.get('force_copy', False)
+                copy_close = to_bool(child.get('copy_close'), True)
+                force_copy = to_bool(child.get('force_copy'), False)
                 
-                # Child copy settings (per-child account)
-                copy_sl = child.get('copy_sl', True)
-                copy_tp = child.get('copy_tp', True)
-                copy_pending = child.get('copy_pending', True)
+                # Child copy settings (per-child account) - ensure proper boolean conversion
+                copy_sl = to_bool(child.get('copy_sl'), True)
+                copy_tp = to_bool(child.get('copy_tp'), True)
+                copy_pending = to_bool(child.get('copy_pending'), True)
                 
                 # Read shared memory - Header: timestamp(8) + balance(8) + equity(8) + count(4) = 28 bytes
                 mm.seek(0)
@@ -955,13 +1001,28 @@ def main(pair_id, child_id):
                     # CHECK: Is this symbol in our allowed list?
                     incoming_symbol = pos['symbol'].upper().strip()
                     symbol_allowed = False
-                    for slot_i in range(1, 21):
-                        master_sym = pair.get(f'master_symbol_{slot_i}', '').strip().upper()
-                        child_sym = child.get(f'child_symbol_{slot_i}', '').strip().upper()
-                        if master_sym == incoming_symbol and child_sym:
-                            symbol_allowed = True
-                            log.log(f"Symbol {incoming_symbol} ALLOWED (slot {slot_i}: {master_sym}->{child_sym})", "INFO")
-                            break
+                    
+                    # NEW FORMAT: Check child's own symbols list first
+                    child_symbols = child.get('symbols', [])
+                    if child_symbols and isinstance(child_symbols, list):
+                        for mapping in child_symbols:
+                            if isinstance(mapping, dict):
+                                m_sym = mapping.get('master', '').upper().strip()
+                                c_sym = mapping.get('child', '').strip()
+                                if m_sym == incoming_symbol and c_sym:
+                                    symbol_allowed = True
+                                    log.log(f"Symbol {incoming_symbol} ALLOWED (new format: {m_sym}->{c_sym})", "INFO")
+                                    break
+                    
+                    # OLD FORMAT (backward compatibility): Check numbered slots
+                    if not symbol_allowed:
+                        for slot_i in range(1, 21):
+                            master_sym = pair.get(f'master_symbol_{slot_i}', '').strip().upper()
+                            child_sym = child.get(f'child_symbol_{slot_i}', '').strip().upper()
+                            if master_sym == incoming_symbol and child_sym:
+                                symbol_allowed = True
+                                log.log(f"Symbol {incoming_symbol} ALLOWED (slot {slot_i}: {master_sym}->{child_sym})", "INFO")
+                                break
                     
                     if not symbol_allowed:
                         log.log(f"Symbol {incoming_symbol} NOT CONFIGURED - SKIPPING trade #{master_ticket}", "WARN")
@@ -982,7 +1043,7 @@ def main(pair_id, child_id):
                         
                         log.log(f"NEW SIGNAL: {pos['symbol']} detected from master", "SIGNAL")
                         
-                        mapped_symbol = map_symbol(pos['symbol'], child)
+                        mapped_symbol = map_symbol(pos['symbol'], child, pair)
                         success = open_trade(
                             mapped_symbol, 
                             pos['type'], 
@@ -1163,12 +1224,26 @@ def main(pair_id, child_id):
                                 incoming_symbol = order['symbol'].strip().upper()
                                 
                                 symbol_allowed = False
-                                for slot_i in range(1, 21):
-                                    master_sym = pair.get(f'master_symbol_{slot_i}', '').strip().upper()
-                                    child_sym = child.get(f'child_symbol_{slot_i}', '').strip().upper()
-                                    if master_sym == incoming_symbol and child_sym:
-                                        symbol_allowed = True
-                                        break
+                                
+                                # NEW FORMAT: Check child's own symbols list first
+                                child_symbols = child.get('symbols', [])
+                                if child_symbols and isinstance(child_symbols, list):
+                                    for mapping in child_symbols:
+                                        if isinstance(mapping, dict):
+                                            m_sym = mapping.get('master', '').upper().strip()
+                                            c_sym = mapping.get('child', '').strip()
+                                            if m_sym == incoming_symbol and c_sym:
+                                                symbol_allowed = True
+                                                break
+                                
+                                # OLD FORMAT (backward compatibility): Check numbered slots
+                                if not symbol_allowed:
+                                    for slot_i in range(1, 21):
+                                        master_sym = pair.get(f'master_symbol_{slot_i}', '').strip().upper()
+                                        child_sym = child.get(f'child_symbol_{slot_i}', '').strip().upper()
+                                        if master_sym == incoming_symbol and child_sym:
+                                            symbol_allowed = True
+                                            break
                                 
                                 if not symbol_allowed:
                                     log.log(f"Pending symbol {incoming_symbol} NOT CONFIGURED", "WARN")
@@ -1179,7 +1254,7 @@ def main(pair_id, child_id):
                                     child_volume = 0.01
                                 
                                 log.log(f"NEW PENDING: {order['symbol']} type={order['type']} vol={child_volume} sl={order['sl']} tp={order['tp']}", "SIGNAL")
-                                mapped_symbol = map_symbol(order['symbol'], child)
+                                mapped_symbol = map_symbol(order['symbol'], child, pair)
                                 
                                 success = open_pending_order(
                                     mapped_symbol,

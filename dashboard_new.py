@@ -408,7 +408,11 @@ def create_app(process_manager):
         if 'children' not in pair:
             pair['children'] = []
         
-        # Add symbol fields from data
+        # Add symbols array (new format)
+        if 'symbols' in data and isinstance(data['symbols'], list):
+            new_child['symbols'] = data['symbols']
+        
+        # Add symbol fields from data (old format for backward compat)
         for i in range(1, 21):
             key = f'child_symbol_{i}'
             if key in data:
@@ -441,7 +445,11 @@ def create_app(process_manager):
                     value = value.strip().strip('"').strip("'")
                 child[key] = value
         
-        # Update child symbol fields - CLEAR old ones first, then set new ones
+        # Update symbols array (new format)
+        if 'symbols' in data:
+            child['symbols'] = data['symbols'] if isinstance(data['symbols'], list) else []
+        
+        # Update child symbol fields - CLEAR old ones first, then set new ones (old format)
         for i in range(1, 21):
             key = f'child_symbol_{i}'
             # Always clear old value first

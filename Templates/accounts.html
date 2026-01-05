@@ -195,11 +195,6 @@ html[data-theme="light"] .form-input[type="date"]::-webkit-calendar-picker-indic
                     </div>
                 </div>
                 <div class="form-section">
-                    <div class="form-section-title settings" style="display:flex;justify-content:space-between;align-items:center;"><span>Master Symbol Mapping</span><button type="button" class="modal-btn" onclick="addMasterSymbolSlot()" style="padding:6px 12px;font-size:12px;"><i class="fas fa-plus"></i> Add Slot</button></div><div class="form-grid copy-grid" id="masterSymbolContainer">
-                        <div class="form-group"><label class="form-label"><i class="fas fa-sync"></i> Master Symbol 1</label><input type="text" class="form-input" name="master_symbol_1" id="pairMasterSymbol1" placeholder="e.g. EURUSD"><span class="form-hint">Maps to child symbol 1</span></div>
-                        </div>
-                </div>
-                <div class="form-section">
                     <div class="form-section-title settings">Pair Settings</div>
                     <div class="form-group"><label class="form-label"><i class="fas fa-tag"></i> Pair Name</label><input type="text" class="form-input" name="name" id="pairName" placeholder="e.g. Main Strategy"></div>
                 </div>
@@ -248,12 +243,13 @@ html[data-theme="light"] .form-input[type="date"]::-webkit-calendar-picker-indic
                     </div>
                 </div>
                 <div class="form-section">
-                    <div class="form-section-title settings" style="display:flex;justify-content:space-between;align-items:center;"><span>Child Symbol Mapping</span><button type="button" class="modal-btn" onclick="addChildSymbolSlot()" style="padding:6px 12px;font-size:12px;"><i class="fas fa-plus"></i> Add Slot</button></div><div class="form-grid copy-grid" id="childSymbolContainer">
-                        <div class="form-group"><label class="form-label"><i class="fas fa-link"></i> Child Symbol 1</label><input type="text" class="form-input" name="child_symbol_1" id="childSymbol1" placeholder="e.g. EURUSD.b"><span class="form-hint">For master symbol 1</span></div>
-                        
-                        
-                        
-                        
+                    <div class="form-section-title settings" style="display:flex;justify-content:space-between;align-items:center;"><span>Symbol Mapping</span><button type="button" class="modal-btn" onclick="addSymbolMapping()" style="padding:6px 12px;font-size:12px;"><i class="fas fa-plus"></i> Add Symbol</button></div>
+                    <div id="symbolMappingContainer">
+                        <div class="symbol-mapping-row" style="display:flex;gap:10px;margin-bottom:10px;align-items:flex-end;">
+                            <div class="form-group" style="flex:1;margin:0;"><label class="form-label"><i class="fas fa-sync"></i> Master Symbol</label><input type="text" class="form-input symbol-master" placeholder="e.g. EURUSD"></div>
+                            <div class="form-group" style="flex:1;margin:0;"><label class="form-label"><i class="fas fa-link"></i> Child Symbol</label><input type="text" class="form-input symbol-child" placeholder="e.g. EURUSD.b"></div>
+                            <button type="button" class="modal-btn" onclick="this.parentElement.remove()" style="padding:8px 12px;background-color:#f44336;height:38px;"><i class="fas fa-trash"></i></button>
+                        </div>
                     </div>
                 </div>
                 <div class="form-section">
@@ -387,9 +383,6 @@ function openPairModal() {
     document.getElementById('pairSaveBtn').innerHTML = '<i class="fas fa-check"></i> Create';
     document.getElementById('pairForm').reset();
     document.getElementById('pairEditId').value = '';
-    // Reset symbol container to just slot 1
-    const container = document.getElementById('masterSymbolContainer');
-    container.innerHTML = '<div class="form-group"><label class="form-label"><i class="fas fa-sync"></i> Master Symbol 1</label><input type="text" class="form-input" name="master_symbol_1" id="pairMasterSymbol1" placeholder="e.g. EURUSD"><span class="form-hint">Maps to child symbol 1</span></div>';
     document.getElementById('pairModal').classList.add('active'); 
 }
 
@@ -406,33 +399,37 @@ function openEditPairModal(pairId) {
     document.getElementById('pairMasterTerminal').value = pair.master_terminal || '';
     document.getElementById('pairName').value = pair.name || '';
     
-    // Dynamically create and populate master symbol slots
-    const container = document.getElementById('masterSymbolContainer');
-    container.innerHTML = '<div class="form-group"><label class="form-label"><i class="fas fa-sync"></i> Master Symbol 1</label><input type="text" class="form-input" name="master_symbol_1" id="pairMasterSymbol1" placeholder="e.g. EURUSD"><span class="form-hint">Maps to child symbol 1</span></div>';
-    document.getElementById('pairMasterSymbol1').value = pair['master_symbol_1'] || '';
-    
-    // Add slots for any additional symbols that exist
-    for(let i=2; i<=20; i++) {
-        const symbolValue = pair['master_symbol_' + i];
-        if (symbolValue) {
-            const newDiv = document.createElement('div');
-            newDiv.className = 'form-group';
-            newDiv.innerHTML = '<label class="form-label"><i class="fas fa-sync"></i> Master Symbol ' + i + '</label><input type="text" class="form-input" name="master_symbol_' + i + '" id="pairMasterSymbol' + i + '" placeholder="e.g. EURUSD"><span class="form-hint">Maps to child symbol ' + i + '</span><button type="button" class="modal-btn" onclick="this.parentElement.remove()" style="padding: 4px 8px; font-size: 11px; margin-top: 4px; background-color: #f44336;"><i class="fas fa-trash"></i> Remove</button>';
-            container.appendChild(newDiv);
-            document.getElementById('pairMasterSymbol' + i).value = symbolValue;
-        }
-    }
-    
     document.getElementById('pairModal').classList.add('active');
 }
 
 function closePairModal() { 
     document.getElementById('pairModal').classList.remove('active'); 
     document.getElementById('pairForm').reset();
-    // Reset symbol container to just slot 1
-    const container = document.getElementById('masterSymbolContainer');
-    container.innerHTML = '<div class="form-group"><label class="form-label"><i class="fas fa-sync"></i> Master Symbol 1</label><input type="text" class="form-input" name="master_symbol_1" id="pairMasterSymbol1" placeholder="e.g. EURUSD"><span class="form-hint">Maps to child symbol 1</span></div>';
     editingPair = null;
+}
+
+function addSymbolMapping() {
+    const container = document.getElementById('symbolMappingContainer');
+    const newRow = document.createElement('div');
+    newRow.className = 'symbol-mapping-row';
+    newRow.style = 'display:flex;gap:10px;margin-bottom:10px;align-items:flex-end;';
+    newRow.innerHTML = `
+        <div class="form-group" style="flex:1;margin:0;"><label class="form-label"><i class="fas fa-sync"></i> Master Symbol</label><input type="text" class="form-input symbol-master" placeholder="e.g. EURUSD"></div>
+        <div class="form-group" style="flex:1;margin:0;"><label class="form-label"><i class="fas fa-link"></i> Child Symbol</label><input type="text" class="form-input symbol-child" placeholder="e.g. EURUSD.b"></div>
+        <button type="button" class="modal-btn" onclick="this.parentElement.remove()" style="padding:8px 12px;background-color:#f44336;height:38px;"><i class="fas fa-trash"></i></button>
+    `;
+    container.appendChild(newRow);
+}
+
+function resetSymbolMappingContainer() {
+    const container = document.getElementById('symbolMappingContainer');
+    container.innerHTML = `
+        <div class="symbol-mapping-row" style="display:flex;gap:10px;margin-bottom:10px;align-items:flex-end;">
+            <div class="form-group" style="flex:1;margin:0;"><label class="form-label"><i class="fas fa-sync"></i> Master Symbol</label><input type="text" class="form-input symbol-master" placeholder="e.g. EURUSD"></div>
+            <div class="form-group" style="flex:1;margin:0;"><label class="form-label"><i class="fas fa-link"></i> Child Symbol</label><input type="text" class="form-input symbol-child" placeholder="e.g. EURUSD.b"></div>
+            <button type="button" class="modal-btn" onclick="this.parentElement.remove()" style="padding:8px 12px;background-color:#f44336;height:38px;"><i class="fas fa-trash"></i></button>
+        </div>
+    `;
 }
 
 function openChildModal(pairId) { 
@@ -451,9 +448,8 @@ function openChildModal(pairId) {
     document.getElementById('childCopyPending').value = 'true';
     document.getElementById('childCopyPeriodEnabled').value = 'false';
     document.getElementById('copyPeriodDates').style.display = 'none';
-    // Reset symbol container to just slot 1
-    const container = document.getElementById('childSymbolContainer');
-    container.innerHTML = '<div class="form-group"><label class="form-label"><i class="fas fa-link"></i> Child Symbol 1</label><input type="text" class="form-input" name="child_symbol_1" id="childSymbol1" placeholder="e.g. EURUSD.b"><span class="form-hint">For master symbol 1</span></div>';
+    // Reset symbol mapping container
+    resetSymbolMappingContainer();
     document.getElementById('childModal').classList.add('active'); 
 }
 
@@ -479,21 +475,46 @@ function openEditChildModal(pairId, childId) {
     document.getElementById('childCopyTP').value = child.copy_tp !== false ? 'true' : 'false';
     document.getElementById('childCopyPending').value = child.copy_pending !== false ? 'true' : 'false';
     
-    // Dynamically create and populate child symbol slots
-    const container = document.getElementById('childSymbolContainer');
-    // Reset to just first slot
-    container.innerHTML = '<div class="form-group"><label class="form-label"><i class="fas fa-link"></i> Child Symbol 1</label><input type="text" class="form-input" name="child_symbol_1" id="childSymbol1" placeholder="e.g. EURUSD.b"><span class="form-hint">For master symbol 1</span></div>';
-    document.getElementById('childSymbol1').value = child['child_symbol_1'] || '';
+    // Populate symbol mapping container
+    const container = document.getElementById('symbolMappingContainer');
+    container.innerHTML = '';
     
-    // Add slots for any additional symbols that exist
-    for(let i=2; i<=20; i++) {
-        const symbolValue = child['child_symbol_' + i];
-        if (symbolValue) {
-            const newDiv = document.createElement('div');
-            newDiv.className = 'form-group';
-            newDiv.innerHTML = '<label class="form-label"><i class="fas fa-link"></i> Child Symbol ' + i + '</label><input type="text" class="form-input" name="child_symbol_' + i + '" id="childSymbol' + i + '" placeholder="e.g. EURUSD.b"><span class="form-hint">For master symbol ' + i + '</span><button type="button" class="modal-btn" onclick="this.parentElement.remove()" style="padding: 4px 8px; font-size: 11px; margin-top: 4px; background-color: #f44336;"><i class="fas fa-trash"></i> Remove</button>';
-            container.appendChild(newDiv);
-            document.getElementById('childSymbol' + i).value = symbolValue;
+    // NEW FORMAT: Check for symbols array first
+    const symbols = child.symbols || [];
+    if (symbols.length > 0) {
+        symbols.forEach(mapping => {
+            const row = document.createElement('div');
+            row.className = 'symbol-mapping-row';
+            row.style = 'display:flex;gap:10px;margin-bottom:10px;align-items:flex-end;';
+            row.innerHTML = `
+                <div class="form-group" style="flex:1;margin:0;"><label class="form-label"><i class="fas fa-sync"></i> Master Symbol</label><input type="text" class="form-input symbol-master" placeholder="e.g. EURUSD" value="${mapping.master || ''}"></div>
+                <div class="form-group" style="flex:1;margin:0;"><label class="form-label"><i class="fas fa-link"></i> Child Symbol</label><input type="text" class="form-input symbol-child" placeholder="e.g. EURUSD.b" value="${mapping.child || ''}"></div>
+                <button type="button" class="modal-btn" onclick="this.parentElement.remove()" style="padding:8px 12px;background-color:#f44336;height:38px;"><i class="fas fa-trash"></i></button>
+            `;
+            container.appendChild(row);
+        });
+    } else {
+        // OLD FORMAT (backward compat): Build from numbered slots
+        let hasSymbols = false;
+        for(let i=1; i<=20; i++) {
+            const masterSym = pair['master_symbol_' + i] || '';
+            const childSym = child['child_symbol_' + i] || '';
+            if (masterSym || childSym) {
+                hasSymbols = true;
+                const row = document.createElement('div');
+                row.className = 'symbol-mapping-row';
+                row.style = 'display:flex;gap:10px;margin-bottom:10px;align-items:flex-end;';
+                row.innerHTML = `
+                    <div class="form-group" style="flex:1;margin:0;"><label class="form-label"><i class="fas fa-sync"></i> Master Symbol</label><input type="text" class="form-input symbol-master" placeholder="e.g. EURUSD" value="${masterSym}"></div>
+                    <div class="form-group" style="flex:1;margin:0;"><label class="form-label"><i class="fas fa-link"></i> Child Symbol</label><input type="text" class="form-input symbol-child" placeholder="e.g. EURUSD.b" value="${childSym}"></div>
+                    <button type="button" class="modal-btn" onclick="this.parentElement.remove()" style="padding:8px 12px;background-color:#f44336;height:38px;"><i class="fas fa-trash"></i></button>
+                `;
+                container.appendChild(row);
+            }
+        }
+        // If no symbols found, add empty row
+        if (!hasSymbols) {
+            resetSymbolMappingContainer();
         }
     }
     
@@ -509,9 +530,8 @@ function openEditChildModal(pairId, childId) {
 function closeChildModal() { 
     document.getElementById('childModal').classList.remove('active'); 
     document.getElementById('childForm').reset();
-    // Reset symbol container to just slot 1
-    const container = document.getElementById('childSymbolContainer');
-    container.innerHTML = '<div class="form-group"><label class="form-label"><i class="fas fa-link"></i> Child Symbol 1</label><input type="text" class="form-input" name="child_symbol_1" id="childSymbol1" placeholder="e.g. EURUSD.b"><span class="form-hint">For master symbol 1</span></div>';
+    // Reset symbol mapping container
+    resetSymbolMappingContainer();
     editingChild = null;
 }
 
@@ -527,43 +547,6 @@ function toggleCopyPeriod() {
     }
 }
 
-function addMasterSymbolSlot() {
-    const container = document.getElementById('masterSymbolContainer');
-    const inputs = container.querySelectorAll('input[name^="master_symbol_"]');
-    const maxSlot = Math.max(0, ...Array.from(inputs).map(inp => {
-        const match = inp.name.match(/master_symbol_(\d+)/);
-        return match ? parseInt(match[1]) : 0;
-    }));
-    const newSlot = maxSlot + 1;
-    const newDiv = document.createElement('div');
-    newDiv.className = 'form-group';
-    newDiv.innerHTML = `
-        <label class="form-label"><i class="fas fa-sync"></i> Master Symbol ${newSlot}</label>
-        <input type="text" class="form-input" name="master_symbol_${newSlot}" id="pairMasterSymbol${newSlot}" placeholder="e.g. EURUSD">
-        <span class="form-hint">Maps to child symbol ${newSlot}</span>
-        <button type="button" class="modal-btn" onclick="this.parentElement.remove()" style="padding: 4px 8px; font-size: 11px; margin-top: 4px; background-color: #f44336;"><i class="fas fa-trash"></i> Remove</button>
-    `;
-    container.appendChild(newDiv);
-}
-
-function addChildSymbolSlot() {
-    const container = document.getElementById('childSymbolContainer');
-    const inputs = container.querySelectorAll('input[name^="child_symbol_"]');
-    const maxSlot = Math.max(0, ...Array.from(inputs).map(inp => {
-        const match = inp.name.match(/child_symbol_(\d+)/);
-        return match ? parseInt(match[1]) : 0;
-    }));
-    const newSlot = maxSlot + 1;
-    const newDiv = document.createElement('div');
-    newDiv.className = 'form-group';
-    newDiv.innerHTML = `
-        <label class="form-label"><i class="fas fa-link"></i> Child Symbol ${newSlot}</label>
-        <input type="text" class="form-input" name="child_symbol_${newSlot}" id="childSymbol${newSlot}" placeholder="e.g. EURUSD.b">
-        <span class="form-hint">For master symbol ${newSlot}</span>
-        <button type="button" class="modal-btn" onclick="this.parentElement.remove()" style="padding: 4px 8px; font-size: 11px; margin-top: 4px; background-color: #f44336;"><i class="fas fa-trash"></i> Remove</button>
-    `;
-    container.appendChild(newDiv);
-}
 async function savePair() {
     const form = document.getElementById('pairForm');
     const formData = new FormData(form);
@@ -572,19 +555,10 @@ async function savePair() {
     
     if (data.master_account) data.master_account = parseInt(data.master_account) || 0;
     
-    // FIX: Renumber master symbols to be consecutive (1,2,3...) to avoid gaps
-    const masterSymbols = [];
+    // Master symbols are now stored per-child, remove any old format keys
     for (let i = 1; i <= 20; i++) {
-        const key = 'master_symbol_' + i;
-        if (data[key] && data[key].trim()) {
-            masterSymbols.push(data[key].trim().toUpperCase());
-        }
-        delete data[key]; // Remove old key
+        delete data['master_symbol_' + i];
     }
-    // Re-add with consecutive numbering
-    masterSymbols.forEach((sym, idx) => {
-        data['master_symbol_' + (idx + 1)] = sym;
-    });
     
     const pairId = document.getElementById('pairEditId').value;
     const isEdit = pairId && pairId.length > 0;
@@ -635,19 +609,24 @@ async function saveChild() {
         if (!data.symbol_override) { delete data.symbol_override; }
     }
     
-    // FIX: Renumber child symbols to be consecutive (1,2,3...) to avoid gaps
-    const childSymbols = [];
-    for (let i = 1; i <= 20; i++) {
-        const key = 'child_symbol_' + i;
-        if (data[key] && data[key].trim()) {
-            childSymbols.push(data[key].trim().toUpperCase());
+    // Build symbols array from symbol mapping rows
+    const symbolRows = document.querySelectorAll('#symbolMappingContainer .symbol-mapping-row');
+    const symbols = [];
+    symbolRows.forEach(row => {
+        const masterInput = row.querySelector('.symbol-master');
+        const childInput = row.querySelector('.symbol-child');
+        const masterSym = masterInput ? masterInput.value.trim().toUpperCase() : '';
+        const childSym = childInput ? childInput.value.trim() : '';
+        if (masterSym && childSym) {
+            symbols.push({ master: masterSym, child: childSym });
         }
-        delete data[key]; // Remove old key
-    }
-    // Re-add with consecutive numbering
-    childSymbols.forEach((sym, idx) => {
-        data['child_symbol_' + (idx + 1)] = sym;
     });
+    data.symbols = symbols;
+    
+    // Remove any old format child_symbol_X keys that might be in formData
+    for (let i = 1; i <= 20; i++) {
+        delete data['child_symbol_' + i];
+    }
 
     
     try {
