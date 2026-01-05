@@ -1,4 +1,4 @@
-"""
+﻿"""
 MT5 Trade Copier Dashboard - Multi-Process Architecture
 Supports multiple pairs with multiple children per pair
 
@@ -174,6 +174,14 @@ def create_app(process_manager):
         user = get_current_user()
         pairs = config.get('pairs', [])
         
+        # Clean up terminal paths (strip quotes, newlines, extra spaces)
+        for pair in pairs:
+            if 'master_terminal' in pair and pair['master_terminal']:
+                pair['master_terminal'] = pair['master_terminal'].strip().strip('"\'')
+            for child in pair.get('children', []):
+                if 'terminal' in child and child['terminal']:
+                    child['terminal'] = child['terminal'].strip().strip('"\'')
+        
         if user and user.get('role') == 'client':
             accessible_pairs = get_user_pairs(user, pairs)
             pairs = [p for _, p in accessible_pairs]
@@ -233,7 +241,7 @@ def create_app(process_manager):
         new_pair = {
             'id': pair_id,
             'name': data.get('name') or f'Pair {master_account}',
-            'master_terminal': (data.get('master_terminal') or '').strip(),
+            'master_terminal': (data.get('master_terminal') or '').strip().strip('"\''),
             'master_account': master_account,
             'master_password': data.get('master_password', ''),
             'master_server': (data.get('master_server') or '').strip(),
@@ -250,7 +258,7 @@ def create_app(process_manager):
             child = {
                 'id': f"child_{secrets.token_hex(4)}",
                 'name': child_data.get('name') or f'Child {idx + 1}',
-                'terminal': (child_data.get('terminal') or '').strip(),
+                'terminal': (child_data.get('terminal') or '').strip().strip('"\''),
                 'account': child_account,
                 'password': child_data.get('password', ''),
                 'server': (child_data.get('server') or '').strip(),
@@ -320,7 +328,7 @@ def create_app(process_manager):
                 child = {
                     'id': child_id,
                     'name': child_data.get('name') or f'Child {idx + 1}',
-                    'terminal': (child_data.get('terminal') or '').strip(),
+                    'terminal': (child_data.get('terminal') or '').strip().strip('"').strip("'"),
                     'account': child_account,
                     'password': child_data.get('password', ''),
                     'server': (child_data.get('server') or '').strip(),
@@ -377,10 +385,10 @@ def create_app(process_manager):
         new_child = {
             'id': child_id,
             'name': data.get('name', 'New Child'),
-            "terminal": data.get("terminal", "").strip("'\"  "),
+            'terminal': (data.get('terminal') or '').strip().strip('"').strip("'"),
             'account': data.get('account', 0),
             'password': data.get('password', ''),
-            "server": data.get("server", "").strip("'\"  "),
+            'server': (data.get('server') or '').strip().strip('"').strip("'"),
             'lot_multiplier': data.get('lot_multiplier', 1.0),
             'copy_mode': data.get('copy_mode', 'normal'),
             'copy_close': data.get('copy_close', True),
@@ -428,7 +436,7 @@ def create_app(process_manager):
             if key in data:
                 value = data[key]
                 if key in ['terminal', 'server'] and isinstance(value, str):
-                    value = value.strip('"' + chr(39) + '  ')
+                    value = value.strip().strip('"').strip("'")
                 child[key] = value
         
         # Update child symbol fields - CLEAR old ones first, then set new ones
@@ -562,14 +570,36 @@ def create_app(process_manager):
     def get_process_status():
         pm = app.config['PROCESS_MANAGER']
         raw_status = pm.get_status()
-        # Convert to format expected by UI: {pair_id: {master_running: bool, children: {}}}
+        # Convert to format expected by UI: {pair_id: {running: bool, activated: bool}}
         status = {}
         for pair_id, pair_status in raw_status.items():
             status[pair_id] = {
-                'master_running': pair_status.get('master', False),
+                'running': pair_status.get('master', False),
+                'activated': pair_status.get('activated', False),
                 'children': pair_status.get('children', {})
             }
-        return jsonify({'status': status})
+        return jsonify(status)
+    
+    @app.route('/api/pairs/<pair_id>/activate', methods=['POST'])
+    @developer_required
+    def activate_pair(pair_id):
+        """Activate a pair - opens MT5 terminals and starts data fetching"""
+        pm = app.config['PROCESS_MANAGER']
+        success, message = pm.activate_pair(pair_id)
+        return jsonify({'success': success, 'message': message})
+    
+    @app.route('/api/pairs/<pair_id>/deactivate', methods=['POST'])
+    @developer_required
+    def deactivate_pair(pair_id):
+        """Deactivate a pair - closes MT5 terminals and stops data fetching"""
+        pm = app.config['PROCESS_MANAGER']
+        # First check if copier is running
+        status = pm.get_status()
+        if pair_id in status and status[pair_id].get('master', False):
+            return jsonify({'success': False, 'error': 'Please stop the copier first'})
+        success, message = pm.deactivate_pair(pair_id)
+        return jsonify({'success': success, 'message': message})
+    
     # API Routes - Activity Logs
     @app.route('/api/activity/<pair_id>')
     @login_required
@@ -601,7 +631,7 @@ def create_app(process_manager):
                         child_activities[child_id] = []
         
         return jsonify({
-            'master': master_activity[:50],
+            'master': master_activity[:100],  # Show last 100 entries
             'children': child_activities
         })
     
@@ -725,7 +755,8 @@ def create_app(process_manager):
         """Get all activity logs from all pairs, masters and children with full identification"""
         all_logs = []
         config = load_config()
-        limit = request.args.get('limit', 500, type=int)
+        limit = request.args.get('limit', 0, type=int)  # 0 = unlimited
+        include_archives = request.args.get('archives', 'false').lower() == 'true'
         
         for pair in config.get('pairs', []):
             pair_id = pair.get('id')
@@ -759,17 +790,60 @@ def create_app(process_manager):
                 except:
                     pass
             
+            # Load master activity archives if requested
+            if include_archives:
+                archive_dir = os.path.join(DATA_DIR, 'logs', 'archive')
+                for i in range(1, 6):  # Check up to 5 archives
+                    archive_file = os.path.join(archive_dir, f'master_activity_{pair_id}.{i}.json')
+                    if os.path.exists(archive_file):
+                        try:
+                            with open(archive_file, 'r') as f:
+                                archived_activities = json.load(f)
+                            for log in archived_activities:
+                                all_logs.append({
+                                    'timestamp': f"{log.get('date', '')} {log.get('time', '')}".strip(),
+                                    'type': log.get('type', 'info'),
+                                    'action': log.get('action', log.get('type', 'info')),
+                                    'message': log.get('message', ''),
+                                    'account': str(master_account),
+                                    'account_type': 'MASTER',
+                                    'pair_id': pair_id,
+                                    'pair_name': pair_name,
+                                    'symbol': log.get('symbol', ''),
+                                    'ticket': log.get('ticket', ''),
+                                    'volume': log.get('volume', ''),
+                                    'price': log.get('price', ''),
+                                    'sl': log.get('sl', ''),
+                                    'tp': log.get('tp', ''),
+                                    'source': 'master_archive'
+                                })
+                        except:
+                            pass
+            
             # Load children activities from .log files (text format)
             import re as regex
             for child in pair.get('children', []):
                 child_id = child.get('id')
                 child_account = child.get('account', 'Unknown')
-                # Try the actual log file naming convention: child_{pair_id}_{child_id}.log
+                
+                # Load all child log files including rotated ones
+                log_files = []
                 child_log = os.path.join(DATA_DIR, 'logs', f'child_{pair_id}_{child_id}.log')
                 if os.path.exists(child_log):
+                    log_files.append(child_log)
+                
+                # Include rotated logs if archives requested
+                if include_archives:
+                    for i in range(1, 6):  # Check up to 5 rotated files
+                        rotated = f"{child_log}.{i}"
+                        if os.path.exists(rotated):
+                            log_files.append(rotated)
+                
+                for log_file in log_files:
                     try:
-                        with open(child_log, 'r') as f:
-                            lines = f.readlines()[-5000:]
+                        with open(log_file, 'r') as f:
+                            lines = f.readlines()
+                        # No limit when reading - read all lines
                         for line in reversed(lines):
                             line = line.strip()
                             if not line:
@@ -804,7 +878,7 @@ def create_app(process_manager):
         if os.path.exists(trade_log):
             try:
                 with open(trade_log, 'r') as f:
-                    lines = f.readlines()[-100:]
+                    lines = f.readlines()  # Read all lines
                 for line in lines:
                     line = line.strip()
                     if line:
@@ -828,7 +902,11 @@ def create_app(process_manager):
         
         # Sort by timestamp descending
         all_logs.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
-        return jsonify({'logs': all_logs[:limit], 'total': len(all_logs)})
+        
+        # Apply limit if specified (0 = unlimited)
+        if limit > 0:
+            return jsonify({'logs': all_logs[:limit], 'total': len(all_logs)})
+        return jsonify({'logs': all_logs, 'total': len(all_logs)})
 
 
     
@@ -1284,26 +1362,68 @@ def create_app(process_manager):
     @app.route('/api/shutdown', methods=['POST'])
     @login_required
     def shutdown_system():
-        """Shutdown all running processes and exit"""
+        """Shutdown all running processes, close all MT5 terminals, and exit"""
         try:
             pm = app.config['PROCESS_MANAGER']
-            
-            # Stop all pairs
             config = load_config()
+            
+            # 1. Stop all pairs (copier processes)
             for pair in config.get('pairs', []):
                 pair_id = pair.get('id')
                 if pair_id:
-                    pm.stop_pair(pair_id)
+                    try:
+                        pm.stop_pair(pair_id)
+                    except:
+                        pass
             
             # Give processes time to stop
-            time.sleep(2)
+            time.sleep(1)
             
-            # Shutdown Flask server
+            # 2. Deactivate all pairs (close MT5 terminals)
+            for pair in config.get('pairs', []):
+                pair_id = pair.get('id')
+                if pair_id:
+                    try:
+                        pm.deactivate_pair(pair_id)
+                    except:
+                        pass
+            
+            time.sleep(1)
+            
+            # 3. Force kill ALL remaining MT5 terminals
+            if os.name == 'nt':
+                try:
+                    import psutil
+                    for proc in psutil.process_iter(['pid', 'name']):
+                        try:
+                            proc_name = (proc.info.get('name') or '').lower()
+                            if 'terminal64.exe' in proc_name or 'terminal.exe' in proc_name:
+                                proc.terminate()
+                                try:
+                                    proc.wait(timeout=2)
+                                except psutil.TimeoutExpired:
+                                    proc.kill()
+                        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                            pass
+                except ImportError:
+                    # Fallback: use taskkill
+                    import subprocess
+                    subprocess.run(['taskkill', '/F', '/IM', 'terminal64.exe'], capture_output=True)
+                    subprocess.run(['taskkill', '/F', '/IM', 'terminal.exe'], capture_output=True)
+            
+            # 4. Shutdown Flask server
             func = request.environ.get('werkzeug.server.shutdown')
             if func is not None:
                 func()
+            else:
+                # For newer Flask, use os._exit
+                import threading
+                def delayed_exit():
+                    time.sleep(0.5)
+                    os._exit(0)
+                threading.Thread(target=delayed_exit, daemon=True).start()
             
-            return jsonify({'success': True, 'message': 'System shutdown initiated'})
+            return jsonify({'success': True, 'message': 'System shutdown initiated - all processes and terminals closed'})
         except Exception as e:
             return jsonify({'success': False, 'error': str(e)})
 
@@ -1315,6 +1435,27 @@ def create_app(process_manager):
     def get_pair_mt5_data(pair_id):
         """Get data directly from MT5 terminals for all accounts in a pair"""
         from mt5_data_fetcher import get_account_live_data
+        
+        # Check if pair is activated before fetching MT5 data
+        pm = app.config['PROCESS_MANAGER']
+        if not pm.activated_pairs.get(pair_id, False):
+            return jsonify({
+                'success': True,
+                'master': {
+                    'balance': 0,
+                    'equity': 0,
+                    'positions': [],
+                    'closed_trades': [],
+                    'error': 'Pair not activated - click Activate to connect MT5 terminals'
+                },
+                'children': {},
+                'child_data': {},
+                'activities': {'master': []},
+                'closed_master': [],
+                'closed_children': {},
+                'balance': 0,
+                'equity': 0
+            })
         
         # Get date filter parameters
         date_from = request.args.get('date_from', None)

@@ -177,6 +177,13 @@
             <label class="filter-label">Search</label>
             <input type="text" class="filter-input" id="filterSearch" placeholder="Search...">
         </div>
+        <div class="filter-group">
+            <label class="filter-label">Include Archives</label>
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                <input type="checkbox" id="filterArchives" onchange="toggleArchives()" style="width: 16px; height: 16px; accent-color: #cc8800;">
+                <span style="font-size: 11px; color: var(--text-secondary);">Load historical logs</span>
+            </label>
+        </div>
         <div class="filter-actions">
             <button class="btn-sm btn-primary" onclick="applyFilters()"><i class="fas fa-search"></i> Apply</button>
             <button class="btn-sm btn-secondary" onclick="clearFilters()"><i class="fas fa-times"></i> Clear</button>
@@ -190,6 +197,11 @@
     <div class="mini-stat"><div class="mini-stat-icon copied"><i class="fas fa-copy"></i></div><div class="mini-stat-content"><div class="value" id="statCopied">0</div><div class="label">Copied</div></div></div>
     <div class="mini-stat"><div class="mini-stat-icon errors"><i class="fas fa-exclamation-triangle"></i></div><div class="mini-stat-content"><div class="value" id="statErrors">0</div><div class="label">Errors</div></div></div>
     <div class="mini-stat"><div class="mini-stat-icon info"><i class="fas fa-info-circle"></i></div><div class="mini-stat-content"><div class="value" id="statInfo">0</div><div class="label">Info</div></div></div>
+</div>
+<div class="stats-row" style="margin-bottom: 20px;">
+    <div class="mini-stat"><div class="mini-stat-icon" style="background: rgba(204,136,0,0.15); color: #cc8800;"><i class="fas fa-user-tie"></i></div><div class="mini-stat-content"><div class="value" id="statMaster">0</div><div class="label">Master Logs</div></div></div>
+    <div class="mini-stat"><div class="mini-stat-icon" style="background: rgba(0,136,204,0.15); color: #0088cc;"><i class="fas fa-users"></i></div><div class="mini-stat-content"><div class="value" id="statChild">0</div><div class="label">Child Logs</div></div></div>
+    <div class="mini-stat" style="grid-column: span 3;"><div class="mini-stat-icon" style="background: rgba(139,92,246,0.15); color: #8b5cf6;"><i class="fas fa-calendar-alt"></i></div><div class="mini-stat-content"><div class="value" id="statDateRange" style="font-size: 12px;">-</div><div class="label">Date Range</div></div></div>
 </div>
 
 <div class="history-table-card">
@@ -215,12 +227,14 @@
 {% block extra_js %}
 <script>
 let allLogs = [], filteredLogs = [], currentPage = 1;
-const perPage = 30;
+const perPage = 50;  // Increased from 30
 let autoRefresh = false, refreshInterval = null;
+let includeArchives = false;
 
 async function fetchHistory() {
     try {
-        const res = await fetch('/api/all-logs?limit=1000');
+        const archiveParam = includeArchives ? '&archives=true' : '';
+        const res = await fetch('/api/all-logs?limit=0' + archiveParam);  // 0 = unlimited
         const data = await res.json();
         allLogs = data.logs || [];
         updateFilterOptions();
@@ -253,11 +267,31 @@ function updateStats() {
     const errors = filteredLogs.filter(l => ['error', 'warning'].includes(normalizeType(l))).length;
     const info = filteredLogs.filter(l => normalizeType(l) === 'info').length;
     
-    document.getElementById('statTotal').textContent = total;
-    document.getElementById('statTrades').textContent = trades;
-    document.getElementById('statCopied').textContent = copied;
-    document.getElementById('statErrors').textContent = errors;
-    document.getElementById('statInfo').textContent = info;
+    // Source breakdown
+    const masterLogs = filteredLogs.filter(l => l.account_type === 'MASTER').length;
+    const childLogs = filteredLogs.filter(l => l.account_type === 'CHILD').length;
+    
+    // Date range
+    let dateRange = '-';
+    if (filteredLogs.length > 0) {
+        const timestamps = filteredLogs.map(l => l.timestamp || '').filter(t => t).sort();
+        if (timestamps.length > 0) {
+            const oldest = timestamps[0].split(' ')[0];
+            const newest = timestamps[timestamps.length - 1].split(' ')[0];
+            if (oldest && newest) {
+                dateRange = oldest === newest ? oldest : `${oldest} → ${newest}`;
+            }
+        }
+    }
+    
+    document.getElementById('statTotal').textContent = total.toLocaleString();
+    document.getElementById('statTrades').textContent = trades.toLocaleString();
+    document.getElementById('statCopied').textContent = copied.toLocaleString();
+    document.getElementById('statErrors').textContent = errors.toLocaleString();
+    document.getElementById('statInfo').textContent = info.toLocaleString();
+    document.getElementById('statMaster').textContent = masterLogs.toLocaleString();
+    document.getElementById('statChild').textContent = childLogs.toLocaleString();
+    document.getElementById('statDateRange').textContent = dateRange;
 }
 
 function updateFilterOptions() {
@@ -307,6 +341,7 @@ function clearFilters() {
     document.getElementById('filterDateFrom').value = '';
     document.getElementById('filterDateTo').value = '';
     document.getElementById('filterSearch').value = '';
+    // Don't reset archives checkbox - user may want to keep viewing all
     applyFilters();
 }
 
@@ -388,6 +423,11 @@ function toggleAutoRefresh() {
     const icon = document.getElementById('autoRefreshIcon');
     if (autoRefresh) { icon.classList.add('fa-spin'); refreshInterval = setInterval(fetchHistory, 5000); }
     else { icon.classList.remove('fa-spin'); clearInterval(refreshInterval); }
+}
+
+function toggleArchives() {
+    includeArchives = document.getElementById('filterArchives').checked;
+    fetchHistory();
 }
 
 function refreshHistory() { fetchHistory(); if (typeof showToast === 'function') showToast('success', 'Refreshed', 'History updated'); }

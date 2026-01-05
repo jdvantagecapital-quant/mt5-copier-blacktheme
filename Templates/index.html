@@ -79,7 +79,105 @@
     .ctrl-btn.start:hover:not(:disabled) { background: rgba(0,200,100,0.2); }
     .ctrl-btn.stop { background: rgba(255,68,102,0.1); color: #ff4466; border-color: rgba(255,68,102,0.3); }
     .ctrl-btn.stop:hover:not(:disabled) { background: rgba(255,68,102,0.2); }
+    .ctrl-btn.activate { background: rgba(102,126,234,0.1); color: #667eea; border-color: rgba(102,126,234,0.3); }
+    .ctrl-btn.activate:hover:not(:disabled) { background: rgba(102,126,234,0.2); }
+    .ctrl-btn.deactivate { background: rgba(204,136,0,0.1); color: #cc8800; border-color: rgba(204,136,0,0.3); }
+    .ctrl-btn.deactivate:hover:not(:disabled) { background: rgba(204,136,0,0.2); }
     .ctrl-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .ctrl-btn.loading { position: relative; pointer-events: none; }
+    .ctrl-btn.loading::after { content: ''; position: absolute; width: 12px; height: 12px; border: 2px solid currentColor; border-top-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite; right: 8px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes pulse-glow { 0%, 100% { box-shadow: 0 0 5px currentColor; } 50% { box-shadow: 0 0 15px currentColor, 0 0 25px currentColor; } }
+    @keyframes slide-in { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+    
+    .btn-divider { width: 1px; height: 24px; background: #222; margin: 0 4px; }
+    
+    /* Pairs Control Panel - Enhanced */
+    .pairs-panel { background: linear-gradient(145deg, #0a0a0a, #0d0d0d); border: 1px solid #1a1a1a; border-radius: 12px; margin-bottom: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+    .pairs-panel-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid #1a1a1a; background: linear-gradient(90deg, rgba(102,126,234,0.05), transparent); }
+    .pairs-panel-title { font-size: 14px; font-weight: 700; color: #999; display: flex; align-items: center; gap: 10px; letter-spacing: 0.5px; }
+    .pairs-panel-title i { color: #667eea; font-size: 16px; }
+    .pairs-panel-actions { display: flex; gap: 10px; align-items: center; }
+    
+    /* Search Box */
+    .pairs-search { display: flex; align-items: center; background: #0a0a0a; border: 1px solid #222; border-radius: 6px; padding: 0 12px; margin-right: 12px; transition: all 0.3s; }
+    .pairs-search:focus-within { border-color: #667eea; box-shadow: 0 0 0 3px rgba(102,126,234,0.1); }
+    .pairs-search i { color: #444; font-size: 11px; }
+    .pairs-search input { background: transparent; border: none; color: #ccc; font-size: 11px; padding: 8px 10px; width: 180px; outline: none; }
+    .pairs-search input::placeholder { color: #444; }
+    
+    .pairs-list { max-height: 450px; overflow-y: auto; padding: 8px 0; }
+    .pairs-list::-webkit-scrollbar { width: 6px; }
+    .pairs-list::-webkit-scrollbar-track { background: #0a0a0a; }
+    .pairs-list::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+    
+    .pair-row { display: flex; align-items: center; padding: 14px 20px; margin: 0 8px 4px; border-radius: 8px; transition: all 0.25s ease; cursor: pointer; animation: fade-in 0.3s ease; background: transparent; border: 1px solid transparent; }
+    .pair-row:hover { background: rgba(102,126,234,0.08); border-color: rgba(102,126,234,0.15); transform: translateX(4px); }
+    .pair-row.selected { background: linear-gradient(90deg, rgba(102,126,234,0.15), rgba(102,126,234,0.05)); border-color: rgba(102,126,234,0.3); border-left: 3px solid #667eea; }
+    .pair-row.inactive { opacity: 0.7; }
+    .pair-row.inactive:hover { opacity: 1; }
+    
+    /* Serial Number */
+    .pair-serial { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #1a1a1a, #0a0a0a); border: 1px solid #222; border-radius: 6px; font-size: 11px; font-weight: 700; color: #555; margin-right: 14px; flex-shrink: 0; }
+    .pair-row.selected .pair-serial { background: linear-gradient(135deg, rgba(102,126,234,0.2), rgba(102,126,234,0.1)); border-color: rgba(102,126,234,0.3); color: #667eea; }
+    .pair-row:not(.inactive) .pair-serial { color: #888; }
+    
+    .pair-info { flex: 1; min-width: 0; }
+    .pair-name { font-size: 13px; font-weight: 600; color: #ddd; margin-bottom: 3px; display: flex; align-items: center; gap: 8px; }
+    .pair-account { font-size: 10px; color: #666; font-family: 'JetBrains Mono', monospace; display: flex; align-items: center; gap: 6px; }
+    .pair-account i { font-size: 8px; color: #444; }
+    .pair-children-count { font-size: 9px; color: #444; margin-top: 2px; }
+    
+    /* Status Badge */
+    .pair-status-badge { display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 20px; margin-right: 16px; min-width: 100px; justify-content: center; }
+    .pair-status-badge.inactive { background: rgba(68,68,68,0.2); border: 1px solid rgba(68,68,68,0.3); }
+    .pair-status-badge.active { background: rgba(102,126,234,0.15); border: 1px solid rgba(102,126,234,0.3); }
+    .pair-status-badge.running { background: rgba(0,200,100,0.15); border: 1px solid rgba(0,200,100,0.3); animation: pulse-glow 2s ease-in-out infinite; }
+    .pair-status-badge.pending { background: rgba(255,170,0,0.15); border: 1px solid rgba(255,170,0,0.3); }
+    
+    .pair-status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .pair-status-dot.inactive { background: #444; }
+    .pair-status-dot.active { background: #667eea; animation: pulse-dot 2s ease-in-out infinite; }
+    .pair-status-dot.running { background: #00c864; animation: pulse-dot 1.5s ease-in-out infinite; }
+    .pair-status-dot.pending { background: #ffaa00; animation: pulse-dot 0.8s ease-in-out infinite; }
+    .pair-status-text { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; }
+    .pair-status-text.inactive { color: #555; }
+    .pair-status-text.active { color: #667eea; }
+    .pair-status-text.running { color: #00c864; }
+    .pair-status-text.pending { color: #ffaa00; }
+    
+    /* Control Buttons - Enhanced */
+    .pair-controls { display: flex; gap: 6px; align-items: center; }
+    .pair-ctrl-btn { padding: 8px 14px; border-radius: 6px; font-size: 10px; font-weight: 600; border: 1px solid; cursor: pointer; transition: all 0.25s ease; display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+    .pair-ctrl-btn i { font-size: 10px; }
+    .pair-ctrl-btn.activate { background: linear-gradient(135deg, rgba(102,126,234,0.15), rgba(102,126,234,0.08)); color: #667eea; border-color: rgba(102,126,234,0.4); }
+    .pair-ctrl-btn.activate:hover:not(:disabled) { background: linear-gradient(135deg, rgba(102,126,234,0.25), rgba(102,126,234,0.15)); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(102,126,234,0.2); }
+    .pair-ctrl-btn.deactivate { background: linear-gradient(135deg, rgba(204,136,0,0.15), rgba(204,136,0,0.08)); color: #cc8800; border-color: rgba(204,136,0,0.4); }
+    .pair-ctrl-btn.deactivate:hover:not(:disabled) { background: linear-gradient(135deg, rgba(204,136,0,0.25), rgba(204,136,0,0.15)); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(204,136,0,0.2); }
+    .pair-ctrl-btn.start { background: linear-gradient(135deg, rgba(0,200,100,0.15), rgba(0,200,100,0.08)); color: #00c864; border-color: rgba(0,200,100,0.4); }
+    .pair-ctrl-btn.start:hover:not(:disabled) { background: linear-gradient(135deg, rgba(0,200,100,0.25), rgba(0,200,100,0.15)); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,200,100,0.2); }
+    .pair-ctrl-btn.stop { background: linear-gradient(135deg, rgba(255,68,102,0.15), rgba(255,68,102,0.08)); color: #ff4466; border-color: rgba(255,68,102,0.4); }
+    .pair-ctrl-btn.stop:hover:not(:disabled) { background: linear-gradient(135deg, rgba(255,68,102,0.25), rgba(255,68,102,0.15)); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(255,68,102,0.2); }
+    .pair-ctrl-btn:disabled { opacity: 0.3; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
+    .pair-ctrl-btn.loading { position: relative; pointer-events: none; }
+    .pair-ctrl-btn.loading i { animation: spin 0.8s linear infinite; }
+    
+    .pair-view-btn { padding: 8px 14px; border-radius: 6px; font-size: 10px; font-weight: 600; background: linear-gradient(135deg, rgba(0,136,204,0.15), rgba(0,136,204,0.08)); color: #0088cc; border: 1px solid rgba(0,136,204,0.4); cursor: pointer; margin-left: 10px; transition: all 0.25s ease; display: flex; align-items: center; gap: 6px; }
+    .pair-view-btn:hover { background: linear-gradient(135deg, rgba(0,136,204,0.25), rgba(0,136,204,0.15)); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,136,204,0.2); }
+    .pair-view-btn.active { background: linear-gradient(135deg, rgba(0,136,204,0.3), rgba(0,136,204,0.2)); border-color: #0088cc; }
+    
+    /* Empty / No Results */
+    .pairs-empty { padding: 60px 20px; text-align: center; color: #444; }
+    .pairs-empty i { font-size: 40px; margin-bottom: 16px; opacity: 0.5; display: block; }
+    .pairs-empty-title { font-size: 14px; font-weight: 600; color: #666; margin-bottom: 6px; }
+    .pairs-empty-text { font-size: 11px; color: #444; }
+    
+    /* Selected Pair Details Section */
+    .selected-pair-header { display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; background: linear-gradient(145deg, #0a0a0a, #0d0d0d); border: 1px solid #1a1a1a; border-radius: 10px; margin-bottom: 14px; animation: slide-in 0.3s ease; }
+    .selected-pair-info { display: flex; align-items: center; gap: 14px; }
+    .selected-pair-name { font-size: 14px; font-weight: 600; color: #ccc; }
+    .selected-pair-account { font-size: 11px; color: #555; font-family: 'JetBrains Mono', monospace; }
 
     .pair-selector { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; padding: 10px 14px; background: #0a0a0a; border: 1px solid #1a1a1a; border-radius: 6px; }
     .pair-selector label { font-size: 10px; color: #444; font-weight: 500; display: flex; align-items: center; gap: 6px; }
@@ -96,10 +194,22 @@
     .acc-badge.master { background: rgba(204,136,0,0.15); color: #cc8800; }
     .acc-badge.child { background: rgba(0,136,204,0.15); color: #0088cc; }
     .acc-num { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #888; }
-    .acc-status { font-size: 9px; display: flex; align-items: center; gap: 4px; }
-    .acc-status.on { color: #00c864; }
-    .acc-status.off { color: #ff4466; }
-    .acc-status i { font-size: 6px; }
+    .acc-status { font-size: 9px; display: flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 12px; font-weight: 600; }
+    .acc-status.on { color: #00c864; background: rgba(0,200,100,0.1); border: 1px solid rgba(0,200,100,0.2); }
+    .acc-status.off { color: #ff4466; background: rgba(255,68,102,0.1); border: 1px solid rgba(255,68,102,0.2); }
+    .acc-status.copying { color: #667eea; background: rgba(102,126,234,0.15); border: 1px solid rgba(102,126,234,0.3); animation: pulse-glow 2s ease-in-out infinite; }
+    .acc-status.pending { color: #ffaa00; background: rgba(255,170,0,0.1); border: 1px solid rgba(255,170,0,0.2); }
+    .acc-status i { font-size: 8px; }
+    
+    .error-msg { background: rgba(255,68,102,0.1); border: 1px solid rgba(255,68,102,0.2); color: #ff6b7a; padding: 8px 12px; font-size: 10px; display: flex; align-items: center; gap: 8px; }
+    .error-msg i { color: #ff4466; }
+    .success-msg { background: rgba(0,200,100,0.1); border: 1px solid rgba(0,200,100,0.2); color: #00c864; padding: 8px 12px; font-size: 10px; display: flex; align-items: center; gap: 8px; }
+    .success-msg i { color: #00c864; }
+    .warning-msg { background: rgba(255,170,0,0.1); border: 1px solid rgba(255,170,0,0.2); color: #ffaa00; padding: 8px 12px; font-size: 10px; display: flex; align-items: center; gap: 8px; }
+    .warning-msg i { color: #ffaa00; }
+    .info-msg { background: rgba(102,126,234,0.1); border: 1px solid rgba(102,126,234,0.2); color: #8899ee; padding: 8px 12px; font-size: 10px; display: flex; align-items: center; gap: 8px; }
+    .info-msg i { color: #667eea; }
+    
     .bal-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 12px; background: #080808; }
     .bal-label { font-size: 9px; color: #444; text-transform: uppercase; margin-bottom: 2px; }
     .bal-value { font-size: 15px; font-weight: 600; font-family: 'JetBrains Mono', monospace; color: #ccc; }
@@ -185,52 +295,69 @@
     </div>
 </div>
 
-<!-- P/L Comparison Section -->
-<div class="pnl-section" id="pnlSection">
-    <div class="pnl-header">
-        <div class="pnl-title"><i class="fas fa-chart-bar"></i> P/L Comparison</div>
-        <div class="pnl-filter">
-            <button class="pnl-filter-btn" onclick="setPnlFilter('today', this)">Today</button>
-            <button class="pnl-filter-btn" onclick="setPnlFilter('7days', this)">7D</button>
-            <button class="pnl-filter-btn active" onclick="setPnlFilter('30days', this)">30D</button>
-            <input type="date" class="pnl-date-input" id="pnl_from">
-            <input type="date" class="pnl-date-input" id="pnl_to">
-            <button class="pnl-filter-btn" onclick="applyPnlCustomDate()"><i class="fas fa-check"></i></button>
+<!-- Pairs Control Panel -->
+<div class="pairs-panel">
+    <div class="pairs-panel-header">
+        <div class="pairs-panel-title"><i class="fas fa-layer-group"></i> Trading Pairs Control</div>
+        <div class="pairs-panel-actions">
+            <div class="pairs-search">
+                <i class="fas fa-search"></i>
+                <input type="text" id="pairSearchInput" placeholder="Search pairs..." onkeyup="filterPairs()">
+            </div>
+            <button class="pair-ctrl-btn activate" onclick="activateAllPairs()" title="Activate all inactive pairs"><i class="fas fa-power-off"></i> Activate All</button>
+            <button class="pair-ctrl-btn start" onclick="startAllPairs()" title="Start all activated pairs"><i class="fas fa-play"></i> Start All</button>
+            <button class="pair-ctrl-btn stop" onclick="stopAllPairs()" title="Stop all running pairs"><i class="fas fa-stop"></i> Stop All</button>
+            <button class="pair-ctrl-btn deactivate" onclick="deactivateAllPairs()" title="Deactivate all stopped pairs"><i class="fas fa-plug"></i> Deactivate All</button>
         </div>
     </div>
-    <div class="pnl-grid" id="pnlGrid"></div>
+    <div class="pairs-list" id="pairsList">
+        <!-- Pairs will be rendered here -->
+    </div>
 </div>
 
-<div class="control-bar">
-    <div class="control-left">
-        <div class="status-indicator stopped" id="statusIndicator">
-            <div class="status-dot stopped" id="statusDot"></div>
-            <span class="status-text stopped" id="statusText">STOPPED</span>
+<!-- Selected Pair Details -->
+<div id="selectedPairSection" style="display: none;">
+    <div class="selected-pair-header">
+        <div class="selected-pair-info">
+            <span class="selected-pair-name" id="selectedPairName">No pair selected</span>
+            <span class="selected-pair-account" id="selectedPairAccount"></span>
         </div>
+        <button class="pair-view-btn" onclick="closeSelectedPair()"><i class="fas fa-times"></i> Close Details</button>
     </div>
-    <div class="ctrl-buttons">
-        <button class="ctrl-btn start" id="btnStart" onclick="startCopier()"><i class="fas fa-play"></i> Start</button>
-        <button class="ctrl-btn stop" id="btnStop" onclick="stopCopier()" disabled><i class="fas fa-stop"></i> Stop</button>
+    
+    <!-- P/L Comparison Section -->
+    <div class="pnl-section" id="pnlSection">
+        <div class="pnl-header">
+            <div class="pnl-title"><i class="fas fa-chart-bar"></i> P/L Comparison</div>
+            <div class="pnl-filter">
+                <button class="pnl-filter-btn" onclick="setPnlFilter('today', this)">Today</button>
+                <button class="pnl-filter-btn" onclick="setPnlFilter('7days', this)">7D</button>
+                <button class="pnl-filter-btn active" onclick="setPnlFilter('30days', this)">30D</button>
+                <input type="date" class="pnl-date-input" id="pnl_from">
+                <input type="date" class="pnl-date-input" id="pnl_to">
+                <button class="pnl-filter-btn" onclick="applyPnlCustomDate()"><i class="fas fa-check"></i></button>
+            </div>
+        </div>
+        <div class="pnl-grid" id="pnlGrid"></div>
     </div>
+    
+    <div class="main-grid" id="accountsContainer"></div>
 </div>
-
-<div class="pair-selector">
-    <label><i class="fas fa-exchange-alt"></i> Active Pair</label>
-    <select class="pair-select" id="pairSelect" onchange="selectPair()"><option value="">Select a pair...</option></select>
-</div>
-
-<div class="main-grid" id="accountsContainer"></div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-// DASHBOARD v4.0 - Full Features: Individual filters, custom dates, all accounts, activity logs
+// DASHBOARD v4.0 - Full Features: Individual filters, custom dates, all accounts, activity logs, per-pair controls
 let allPairs = [], selectedPairId = null, selectedPair = null, processStatus = {};
-let globalStats = { total: 0, success: 0, failed: 0 }, isRunning = false;
+let globalStats = { total: 0, success: 0, failed: 0 };
 let tradeData = { master: {}, children: {}, child_data: {}, activities: {}, closed_master: [], closed_children: {} };
 let activeTab = {};
 let cardFilters = {};  // { master: {type:'30days'}, child_0: {type:'custom', from:'2025-01-01', to:'2025-12-31'} }
 let isLoading = false;
+let isLoadingPairs = false;  // Separate flag for pairs list loading
+let pairStates = {};  // Per-pair states: { pairId: { activated: bool, running: bool } }
+let lastMt5Fetch = 0;  // Timestamp of last MT5 data fetch
+const MT5_FETCH_INTERVAL = 15000;  // Fetch MT5 data at most every 15 seconds
 
 function formatDate(d) { 
     return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); 
@@ -295,35 +422,252 @@ function applyPnlCustomDate() {
 }
 
 async function loadPairs() {
-    try { const res = await fetch('/api/pairs'); allPairs = await res.json(); } catch(e) { allPairs = []; }
-    const select = document.getElementById('pairSelect');
-    updateOverviewStats();
-    if (!allPairs.length) {
-        select.innerHTML = '<option value="">No pairs configured</option>';
-        document.getElementById('accountsContainer').innerHTML = '<div class="no-pairs"><i class="fas fa-plug"></i><h3>No Copy Pairs</h3></div>';
-        return;
+    if (isLoadingPairs) return;  // Prevent concurrent loads
+    isLoadingPairs = true;
+    
+    try { 
+        const res = await fetch('/api/pairs'); 
+        const data = await res.json();
+        const newPairs = data.pairs || data || [];
+        
+        // Only update if we got valid data (don't clear on error)
+        if (newPairs.length > 0 || allPairs.length === 0) {
+            allPairs = newPairs;
+        }
+        
+        // Fetch process status for all pairs
+        try {
+            const statusRes = await fetch('/api/process-status');
+            const newStatus = await statusRes.json();
+            if (Object.keys(newStatus).length > 0 || Object.keys(processStatus).length === 0) {
+                processStatus = newStatus;
+            }
+        } catch(e) { /* Keep existing processStatus on error */ }
+        
+        // Update pair states
+        allPairs.forEach(p => {
+            const ps = processStatus[p.id] || {};
+            pairStates[p.id] = {
+                activated: ps.activated || false,
+                running: ps.running || false
+            };
+        });
+        
+        updatePairsListInPlace();  // Update in-place without full rebuild
+        updateOverviewStats();
+    } catch(e) { 
+        console.error('Failed to load pairs:', e);
+        // Don't clear allPairs on error - keep showing existing data
+    } finally {
+        isLoadingPairs = false;
     }
-    select.innerHTML = allPairs.map(p => '<option value="'+p.id+'">'+(p.name||'Pair')+' ('+p.master_account+')</option>').join('');
-    const saved = localStorage.getItem('selectedPairId');
-    if (saved && allPairs.find(p => p.id === saved)) select.value = saved;
-    selectPair();
+    
+    // Only show empty state on initial load when truly empty
+    if (allPairs.length === 0) {
+        refreshPairsList();  // Will show empty state
+    }
 }
 
+function renderPairsList(filterText = '') {
+    const container = document.getElementById('pairsList');
+    const searchText = filterText.toLowerCase().trim();
+    
+    // Filter pairs based on search
+    let filteredPairs = allPairs;
+    if (searchText) {
+        filteredPairs = allPairs.filter(p => {
+            const name = (p.name || p.id || '').toLowerCase();
+            const account = (p.master_account || '').toString().toLowerCase();
+            return name.includes(searchText) || account.includes(searchText);
+        });
+    }
+    
+    if (!filteredPairs.length) {
+        if (searchText) {
+            container.innerHTML = '<div class="pairs-empty"><i class="fas fa-search"></i><div class="pairs-empty-title">No pairs found</div><div class="pairs-empty-text">Try a different search term</div></div>';
+        } else {
+            container.innerHTML = '<div class="pairs-empty"><i class="fas fa-plus-circle"></i><div class="pairs-empty-title">No pairs configured</div><div class="pairs-empty-text">Go to Settings to add trading pairs</div></div>';
+        }
+        return;
+    }
+    
+    let html = '';
+    filteredPairs.forEach((p, index) => {
+        const state = pairStates[p.id] || { activated: false, running: false };
+        
+        // Determine status with pending states
+        let statusClass, statusText;
+        if (state.starting) {
+            statusClass = 'pending';
+            statusText = 'STARTING...';
+        } else if (state.stopping) {
+            statusClass = 'pending';
+            statusText = 'STOPPING...';
+        } else if (state.activating) {
+            statusClass = 'pending';
+            statusText = 'ACTIVATING...';
+        } else if (state.deactivating) {
+            statusClass = 'pending';
+            statusText = 'DEACTIVATING...';
+        } else if (state.running) {
+            statusClass = 'running';
+            statusText = 'COPYING';
+        } else if (state.activated) {
+            statusClass = 'active';
+            statusText = 'READY';
+        } else {
+            statusClass = 'inactive';
+            statusText = 'OFFLINE';
+        }
+        
+        const isSelected = selectedPairId === p.id;
+        const serialNum = allPairs.indexOf(p) + 1;  // Original index for serial
+        
+        html += '<div class="pair-row' + (isSelected ? ' selected' : '') + (statusClass === 'inactive' ? ' inactive' : '') + '" data-pair-id="' + p.id + '" onclick="viewPairDetails(\'' + p.id + '\')">';
+        
+        // Serial Number
+        html += '<div class="pair-serial">' + serialNum + '</div>';
+        
+        // Status Dot (before info)
+        html += '<div class="pair-status-dot ' + statusClass + '" style="margin-right: 12px;"></div>';
+        
+        // Pair Info
+        html += '<div class="pair-info">';
+        html += '<div class="pair-name">' + (p.name || 'Pair ' + serialNum) + '</div>';
+        html += '<div class="pair-account"><i class="fas fa-crown"></i> ' + p.master_account + ' <i class="fas fa-arrow-right"></i> ' + (p.children?.length || 0) + ' child(ren)</div>';
+        html += '</div>';
+        
+        // Status Badge
+        html += '<div class="pair-status-badge ' + statusClass + '">';
+        html += '<div class="pair-status-dot ' + statusClass + '"></div>';
+        html += '<span class="pair-status-text ' + statusClass + '">' + statusText + '</span>';
+        html += '</div>';
+        
+        // Control Buttons - disable during pending states
+        const isPending = state.starting || state.stopping || state.activating || state.deactivating;
+        html += '<div class="pair-controls" onclick="event.stopPropagation()">';
+        
+        if (!state.activated && !isPending) {
+            html += '<button class="pair-ctrl-btn activate" onclick="activatePair(\'' + p.id + '\', event)" title="Connect MT5 terminals"><i class="fas fa-power-off"></i> Activate</button>';
+        } else if (state.running && !isPending) {
+            html += '<button class="pair-ctrl-btn stop" onclick="stopPair(\'' + p.id + '\', event)" title="Stop trade copying"><i class="fas fa-stop"></i> Stop</button>';
+        } else if (state.activated && !state.running && !isPending) {
+            html += '<button class="pair-ctrl-btn start" onclick="startPair(\'' + p.id + '\', event)" title="Start trade copying"><i class="fas fa-play"></i> Start</button>';
+            html += '<button class="pair-ctrl-btn deactivate" onclick="deactivatePair(\'' + p.id + '\', event)" title="Disconnect MT5 terminals"><i class="fas fa-plug"></i> Deactivate</button>';
+        } else if (isPending) {
+            html += '<button class="pair-ctrl-btn" disabled style="opacity:0.5;cursor:wait;"><i class="fas fa-spinner fa-spin"></i> Please wait...</button>';
+        }
+        
+        html += '<button class="pair-view-btn' + (isSelected ? ' active' : '') + '" onclick="viewPairDetails(\'' + p.id + '\')" title="View pair details"><i class="fas fa-chart-line"></i> Details</button>';
+        html += '</div>';
+        html += '</div>';
+    });
+    
+    container.innerHTML = html;
+}
+
+function filterPairs() {
+    const searchInput = document.getElementById('pairSearchInput');
+    renderPairsList(searchInput ? searchInput.value : '');
+}
+
+function refreshPairsList() {
+    // Preserve current search when refreshing
+    const searchInput = document.getElementById('pairSearchInput');
+    renderPairsList(searchInput ? searchInput.value : '');
+}
+
+function updatePairsListInPlace() {
+    // Update existing pair rows in-place without full DOM rebuild (prevents flicker)
+    const container = document.getElementById('pairsList');
+    if (!container) return;
+    
+    // If no pairs rendered yet, do full render
+    if (!container.querySelector('.pair-row')) {
+        refreshPairsList();
+        return;
+    }
+    
+    // Update each existing pair row
+    allPairs.forEach((p, index) => {
+        const row = container.querySelector(`[data-pair-id="${p.id}"]`);
+        if (!row) return;  // New pair - will be added on next full refresh
+        
+        const state = pairStates[p.id] || { activated: false, running: false };
+        const statusClass = state.running ? 'running' : state.activated ? 'active' : 'inactive';
+        const statusText = state.running ? 'COPYING' : state.activated ? 'READY' : 'OFFLINE';
+        
+        // Update status dot
+        const statusDots = row.querySelectorAll('.pair-status-dot');
+        statusDots.forEach(dot => {
+            dot.className = 'pair-status-dot ' + statusClass;
+        });
+        
+        // Update status badge text
+        const statusTextEl = row.querySelector('.pair-status-text');
+        if (statusTextEl) {
+            statusTextEl.className = 'pair-status-text ' + statusClass;
+            statusTextEl.textContent = statusText;
+        }
+        
+        // Update status badge container
+        const statusBadge = row.querySelector('.pair-status-badge');
+        if (statusBadge) {
+            statusBadge.className = 'pair-status-badge ' + statusClass;
+        }
+        
+        // Update control buttons
+        const controls = row.querySelector('.pair-controls');
+        if (controls) {
+            let btnHtml = '';
+            if (!state.activated) {
+                btnHtml = '<button class="pair-ctrl-btn activate" onclick="activatePair(\'' + p.id + '\', event)" title="Connect MT5 terminals"><i class="fas fa-power-off"></i> Activate</button>';
+            } else if (state.running) {
+                btnHtml = '<button class="pair-ctrl-btn stop" onclick="stopPair(\'' + p.id + '\', event)" title="Stop trade copying"><i class="fas fa-stop"></i> Stop</button>';
+            } else {
+                btnHtml = '<button class="pair-ctrl-btn start" onclick="startPair(\'' + p.id + '\', event)" title="Start trade copying"><i class="fas fa-play"></i> Start</button>';
+                btnHtml += '<button class="pair-ctrl-btn deactivate" onclick="deactivatePair(\'' + p.id + '\', event)" title="Disconnect MT5 terminals"><i class="fas fa-plug"></i> Deactivate</button>';
+            }
+            const isSelected = selectedPairId === p.id;
+            btnHtml += '<button class="pair-view-btn' + (isSelected ? ' active' : '') + '" onclick="viewPairDetails(\'' + p.id + '\')" title="View pair details"><i class="fas fa-chart-line"></i> Details</button>';
+            controls.innerHTML = btnHtml;
+        }
+        
+        // Update row classes
+        row.className = 'pair-row' + (selectedPairId === p.id ? ' selected' : '') + (statusClass === 'inactive' ? ' inactive' : '');
+    });
+}
 function updateOverviewStats() {
     document.getElementById('totalPairs').textContent = allPairs.length;
     let tc = 0; allPairs.forEach(p => tc += (p.children||[]).length);
     document.getElementById('totalChildren').textContent = tc;
-    document.getElementById('pairsStatus').textContent = allPairs.length > 0 ? 'Active' : 'None';
-    document.getElementById('pairsStatus').className = 'overview-badge ' + (allPairs.length > 0 ? 'active' : 'inactive');
+    
+    // Count running/active pairs
+    let runningCount = 0, activeCount = 0;
+    Object.values(pairStates).forEach(s => {
+        if (s.running) runningCount++;
+        else if (s.activated) activeCount++;
+    });
+    
+    const pairsStatusEl = document.getElementById('pairsStatus');
+    if (runningCount > 0) {
+        pairsStatusEl.textContent = runningCount + ' Running';
+        pairsStatusEl.className = 'overview-badge active';
+    } else if (activeCount > 0) {
+        pairsStatusEl.textContent = activeCount + ' Active';
+        pairsStatusEl.className = 'overview-badge neutral';
+    } else {
+        pairsStatusEl.textContent = allPairs.length > 0 ? 'Configured' : 'None';
+        pairsStatusEl.className = 'overview-badge ' + (allPairs.length > 0 ? 'neutral' : 'inactive');
+    }
     document.getElementById('childrenStatus').textContent = tc > 0 ? 'Ready' : 'None';
     document.getElementById('childrenStatus').className = 'overview-badge ' + (tc > 0 ? 'active' : 'inactive');
 }
 
-function selectPair() {
-    const select = document.getElementById('pairSelect');
-    selectedPairId = select.value;
-    localStorage.setItem('selectedPairId', selectedPairId);
-    selectedPair = allPairs.find(p => p.id === selectedPairId);
+function viewPairDetails(pairId) {
+    selectedPairId = pairId;
+    selectedPair = allPairs.find(p => p.id === pairId);
+    localStorage.setItem('selectedPairId', pairId);
     activeTab = {};
     // Initialize filters for all accounts
     cardFilters = { master: { type: '30days' } };
@@ -332,7 +676,23 @@ function selectPair() {
             cardFilters['child_' + i] = { type: '30days' };
         });
     }
+    
+    // Show selected pair section
+    document.getElementById('selectedPairSection').style.display = 'block';
+    document.getElementById('selectedPairName').textContent = selectedPair?.name || selectedPair?.id || 'Unknown';
+    document.getElementById('selectedPairAccount').textContent = 'Master: ' + (selectedPair?.master_account || 'N/A');
+    
+    refreshPairsList();  // Update selection highlight
     loadData();
+}
+
+function closeSelectedPair() {
+    selectedPairId = null;
+    selectedPair = null;
+    document.getElementById('selectedPairSection').style.display = 'none';
+    document.getElementById('accountsContainer').innerHTML = '';
+    document.getElementById('pnlGrid').innerHTML = '';
+    refreshPairsList();
 }
 
 async function loadData() {
@@ -340,29 +700,55 @@ async function loadData() {
     if (isLoading) return;
     isLoading = true;
     try {
-        // 1. Process status
-        try { const res = await fetch('/api/process-status'); processStatus = (await res.json()).status || {}; } catch(e) { processStatus = {}; }
-        const pairStatus = processStatus[selectedPairId];
-        isRunning = pairStatus && pairStatus.master_running;
-        updateStatusUI();
+        // 1. Process status - update all pair states (lightweight, always fetch)
+        try { 
+            const res = await fetch('/api/process-status'); 
+            const newStatus = await res.json();
+            if (Object.keys(newStatus).length > 0) {
+                processStatus = newStatus;
+            }
+            // Update pairStates
+            allPairs.forEach(p => {
+                const ps = processStatus[p.id] || {};
+                pairStates[p.id] = {
+                    activated: ps.activated || false,
+                    running: ps.running || false
+                };
+            });
+            updatePairsListInPlace();  // In-place update, no flicker
+            updateOverviewStats();
+        } catch(e) { /* Keep existing status */ }
 
-        // 2. Get all data - fetch 90 days to allow flexible filtering
-        const today = new Date(); today.setHours(0,0,0,0);
-        const s90 = new Date(today); s90.setDate(s90.getDate() - 90);
-        const url = '/api/pairs/' + selectedPairId + '/mt5-data?date_from=' + formatDate(s90) + '&date_to=' + formatDate(today);
-        const res = await fetch(url);
-        const data = await res.json();
-        if (data.success) {
-            tradeData = {
-                master: data.master || { balance: 0, equity: 0, positions: [] },
-                children: data.children || {},
-                child_data: data.child_data || {},
-                activities: data.activities || {},
-                closed_master: data.closed_master || [],
-                closed_children: data.closed_children || {}
-            };
-            tradeData.balance = data.master?.balance || data.balance || 0;
-            tradeData.equity = data.master?.equity || data.equity || 0;
+        // 2. Get MT5 data - THROTTLED to avoid login/logout loops
+        const now = Date.now();
+        const pairState = pairStates[selectedPairId] || {};
+        
+        // Only fetch MT5 data if:
+        // - Pair is activated AND
+        // - Enough time has passed since last fetch (or this is first fetch)
+        if (pairState.activated && (now - lastMt5Fetch >= MT5_FETCH_INTERVAL || lastMt5Fetch === 0)) {
+            lastMt5Fetch = now;
+            
+            const today = new Date(); today.setHours(0,0,0,0);
+            const s90 = new Date(today); s90.setDate(s90.getDate() - 90);
+            const url = '/api/pairs/' + selectedPairId + '/mt5-data?date_from=' + formatDate(s90) + '&date_to=' + formatDate(today);
+            
+            try {
+                const res = await fetch(url);
+                const data = await res.json();
+                if (data.success) {
+                    tradeData = {
+                        master: data.master || { balance: 0, equity: 0, positions: [] },
+                        children: data.children || {},
+                        child_data: data.child_data || {},
+                        activities: data.activities || {},
+                        closed_master: data.closed_master || [],
+                        closed_children: data.closed_children || {}
+                    };
+                    tradeData.balance = data.master?.balance || data.balance || 0;
+                    tradeData.equity = data.master?.equity || data.equity || 0;
+                }
+            } catch(e) { console.error('MT5 data fetch error:', e); }
         }
 
         // 3. Global stats
@@ -386,19 +772,6 @@ function filterByDate(trades, cardId) {
         const tradeDate = new Date(closeTime);
         return tradeDate >= fromDate && tradeDate <= toDate;
     });
-}
-
-function updateStatusUI() {
-    const indicator = document.getElementById('statusIndicator');
-    const dot = document.getElementById('statusDot');
-    const txt = document.getElementById('statusText');
-    if (isRunning) {
-        indicator.className = 'status-indicator'; dot.className = 'status-dot'; txt.className = 'status-text'; txt.textContent = 'RUNNING';
-        document.getElementById('btnStart').disabled = true; document.getElementById('btnStop').disabled = false;
-    } else {
-        indicator.className = 'status-indicator stopped'; dot.className = 'status-dot stopped'; txt.className = 'status-text stopped'; txt.textContent = 'STOPPED';
-        document.getElementById('btnStart').disabled = false; document.getElementById('btnStop').disabled = true;
-    }
 }
 
 function renderPnlSection() {
@@ -475,6 +848,7 @@ function renderAccounts() {
     if (!selectedPair) { container.innerHTML = ''; return; }
     
     const children = selectedPair.children || [];
+    const pairState = pairStates[selectedPairId] || { activated: false, running: false };
     
     // MASTER CARD
     const masterPositions = tradeData.master?.positions || [];
@@ -482,10 +856,25 @@ function renderAccounts() {
     const masterActivities = tradeData.activities?.master || [];
     const filteredClosedMaster = filterByDate(tradeData.closed_master || [], 'master');
     
+    // Pass connection state: 'offline', 'online', or 'copying'
+    // Determine master connection state with pending states
+    let masterConnState;
+    if (pairState.starting) {
+        masterConnState = 'starting';
+    } else if (pairState.stopping) {
+        masterConnState = 'stopping';
+    } else if (pairState.running) {
+        masterConnState = 'copying';
+    } else if (pairState.activated) {
+        masterConnState = 'online';
+    } else {
+        masterConnState = 'offline';
+    }
+    
     let html = buildCard('master', 'master', selectedPair.master_account, 
         tradeData.master?.balance || tradeData.balance || 0, 
         tradeData.master?.equity || tradeData.equity || 0, 
-        masterPositions, masterPnl, isRunning, masterActivities, filteredClosedMaster, tradeData.master?.error);
+        masterPositions, masterPnl, masterConnState, masterActivities, filteredClosedMaster, tradeData.master?.error);
     
     // ALL CHILD CARDS
     children.forEach((child, i) => {
@@ -510,12 +899,24 @@ function renderAccounts() {
         // Get closed trades
         const filteredClosedChild = filterByDate(tradeData.closed_children?.[cid] || [], cardId);
         
-        const childConnected = isRunning && child.enabled;
+        // Child connection state with pending states
+        let childConnState;
+        if (pairState.starting) {
+            childConnState = 'starting';
+        } else if (pairState.stopping) {
+            childConnState = 'stopping';
+        } else if (pairState.running && child.enabled) {
+            childConnState = 'copying';
+        } else if (pairState.activated) {
+            childConnState = 'online';
+        } else {
+            childConnState = 'offline';
+        }
         
         html += buildCard(cardId, 'child', child.account, 
             childInfo.balance || 0, 
             childInfo.equity || 0, 
-            childPositions, childPnl, childConnected, childActivities, filteredClosedChild, childInfo.error);
+            childPositions, childPnl, childConnState, childActivities, filteredClosedChild, childInfo.error);
     });
     
     // Preserve scroll
@@ -542,11 +943,33 @@ function renderAccounts() {
     });
 }
 
-function buildCard(cardId, type, account, balance, equity, trades, pnl, connected, activities, closedTrades, error) {
+function buildCard(cardId, type, account, balance, equity, trades, pnl, connState, activities, closedTrades, error) {
     const pnlClass = pnl >= 0 ? 'pos' : 'neg';
     const currentTab = activeTab[cardId] || 'live';
     const filter = cardFilters[cardId] || { type: '30days' };
     const currentFilter = filter.type;
+    
+    // Determine status display based on connection state
+    let statusClass = 'off';
+    let statusText = 'Offline';
+    let statusIcon = 'circle';
+    if (connState === 'starting') {
+        statusClass = 'pending';
+        statusText = 'Starting...';
+        statusIcon = 'spinner fa-spin';
+    } else if (connState === 'stopping') {
+        statusClass = 'pending';
+        statusText = 'Stopping...';
+        statusIcon = 'spinner fa-spin';
+    } else if (connState === 'copying') {
+        statusClass = 'copying';
+        statusText = 'Copying';
+        statusIcon = 'sync fa-spin';
+    } else if (connState === 'online') {
+        statusClass = 'on';
+        statusText = 'Online';
+        statusIcon = 'circle';
+    }
     
     let html = '<div class="acc-card ' + type + '" id="card_' + cardId + '">';
     
@@ -554,10 +977,13 @@ function buildCard(cardId, type, account, balance, equity, trades, pnl, connecte
     html += '<div class="acc-header"><div class="acc-info">';
     html += '<span class="acc-badge ' + type + '">' + type.toUpperCase() + '</span>';
     html += '<span class="acc-num">' + account + '</span></div>';
-    html += '<div class="acc-status ' + (connected ? 'on' : 'off') + '"><i class="fas fa-circle"></i> ' + (connected ? 'Connected' : 'Offline') + '</div></div>';
+    html += '<div class="acc-status ' + statusClass + '"><i class="fas fa-' + statusIcon + '"></i> ' + statusText + '</div></div>';
     
-    // Error
-    if (error) html += '<div class="error-msg"><i class="fas fa-exclamation-triangle"></i> ' + error + '</div>';
+    // Error/Info message
+    if (error) {
+        const isInfo = error.includes('activate') || error.includes('Activate');
+        html += '<div class="' + (isInfo ? 'info-msg' : 'error-msg') + '"><i class="fas fa-' + (isInfo ? 'info-circle' : 'exclamation-triangle') + '"></i> ' + error + '</div>';
+    }
     
     // Balance/Equity
     html += '<div class="bal-row"><div><div class="bal-label">Balance</div><div class="bal-value">$' + formatMoney(balance) + '</div></div>';
@@ -625,10 +1051,11 @@ function buildCard(cardId, type, account, balance, equity, trades, pnl, connecte
     }
     html += '</div></div>';
     
-    // Activity tab - FULL ACTIVITY LOG
+    // Activity tab - Show last 100 entries for performance
     html += '<div class="tab-panel ' + (currentTab === 'activity' ? 'show' : '') + '" id="' + cardId + '_activity"><div class="activity-panel">';
     if (activities && activities.length > 0) {
-        activities.slice(0, 5000).forEach(act => {
+        const displayCount = Math.min(activities.length, 100);
+        activities.slice(0, 100).forEach(act => {
             const a = parseActivity(act);
             const icons = { 
                 TRADE: 'arrow-up', CLOSE: 'arrow-down', SIGNAL: 'bolt', 
@@ -691,33 +1118,226 @@ function updateStats() {
     }
 }
 
-async function startCopier() {
-    document.getElementById('btnStart').disabled = true;
+// Per-pair control functions
+async function activatePair(pairId, event) {
+    if (event) event.stopPropagation();
+    const btn = event?.target?.closest('.pair-ctrl-btn');
+    if (btn) { btn.disabled = true; btn.classList.add('loading'); }
+    
+    // Show pending state in UI
+    pairStates[pairId] = { ...pairStates[pairId], activating: true };
+    updatePairsListInPlace();
+    
     try { 
-        await fetch('/api/pairs/' + selectedPairId + '/start', { method: 'POST' }); 
-        setTimeout(loadData, 500); 
+        const res = await fetch('/api/pairs/' + pairId + '/activate', { method: 'POST' }); 
+        const data = await res.json();
+        if (data.success) {
+            showToast('info', 'Activating...', 'Connecting MT5 terminals, please wait...');
+        } else {
+            showToast('error', 'Activation Failed', data.error || 'Could not activate pair');
+            pairStates[pairId] = { ...pairStates[pairId], activating: false };
+            if (btn) { btn.disabled = false; btn.classList.remove('loading'); }
+            return;
+        }
+        // Poll status quickly to get actual state
+        await new Promise(r => setTimeout(r, 2000));
+        await loadPairs();
+        
+        // Show completion notification
+        const newState = pairStates[pairId] || {};
+        if (newState.activated) {
+            showToast('success', 'Activated!', 'MT5 terminals connected successfully');
+        } else {
+            showToast('warning', 'Activation Incomplete', 'Please check MT5 terminals');
+        }
     } catch(e) { 
-        document.getElementById('btnStart').disabled = false; 
+        showToast('error', 'Error', 'Failed to activate pair');
+    }
+    
+    pairStates[pairId] = { ...pairStates[pairId], activating: false };
+    if (btn) { btn.disabled = false; btn.classList.remove('loading'); }
+}
+
+async function deactivatePair(pairId, event) {
+    if (event) event.stopPropagation();
+    const state = pairStates[pairId] || {};
+    if (state.running) {
+        showToast('warning', 'Cannot Deactivate', 'Please stop the copier first');
+        return;
+    }
+    const btn = event?.target?.closest('.pair-ctrl-btn');
+    if (btn) { btn.disabled = true; btn.classList.add('loading'); }
+    
+    // Show pending state
+    pairStates[pairId] = { ...pairStates[pairId], deactivating: true };
+    
+    // Clear trade data for this pair immediately
+    tradeData = { master: {}, children: {}, child_data: {}, activities: {}, closed_master: [], closed_children: {} };
+    
+    updatePairsListInPlace();
+    
+    try { 
+        const res = await fetch('/api/pairs/' + pairId + '/deactivate', { method: 'POST' }); 
+        const data = await res.json();
+        if (data.success) {
+            showToast('info', 'Deactivating...', 'Closing MT5 terminals...');
+        } else {
+            showToast('error', 'Deactivation Failed', data.error || 'Could not deactivate pair');
+            pairStates[pairId] = { ...pairStates[pairId], deactivating: false };
+            if (btn) { btn.disabled = false; btn.classList.remove('loading'); }
+            return;
+        }
+        await new Promise(r => setTimeout(r, 2000));
+        await loadPairs();
+        
+        // Show completion notification
+        const newState = pairStates[pairId] || {};
+        if (!newState.activated) {
+            showToast('success', 'Deactivated!', 'MT5 terminals closed successfully');
+        } else {
+            showToast('warning', 'Deactivation Incomplete', 'Some terminals may still be open');
+        }
+    } catch(e) { 
+        showToast('error', 'Error', 'Failed to deactivate pair');
+    }
+    
+    pairStates[pairId] = { ...pairStates[pairId], deactivating: false };
+    if (btn) { btn.disabled = false; btn.classList.remove('loading'); }
+}
+
+async function startPair(pairId, event) {
+    if (event) event.stopPropagation();
+    const state = pairStates[pairId] || {};
+    if (!state.activated) {
+        showToast('warning', 'Cannot Start', 'Please activate the pair first');
+        return;
+    }
+    const btn = event?.target?.closest('.pair-ctrl-btn');
+    if (btn) { btn.disabled = true; btn.classList.add('loading'); }
+    
+    // Show starting state
+    pairStates[pairId] = { ...pairStates[pairId], starting: true };
+    updatePairsListInPlace();
+    
+    try { 
+        const res = await fetch('/api/pairs/' + pairId + '/start', { method: 'POST' }); 
+        const data = await res.json();
+        if (data.success) {
+            showToast('info', 'Starting Copier...', 'Initializing trade copying, please wait...');
+        } else {
+            showToast('error', 'Start Failed', data.error || 'Could not start copier');
+            pairStates[pairId] = { ...pairStates[pairId], starting: false };
+            if (btn) { btn.disabled = false; btn.classList.remove('loading'); }
+            return;
+        }
+        // Wait a bit for processes to actually start, then poll status
+        await new Promise(r => setTimeout(r, 2500));
+        await loadPairs();
+        // Poll again for accurate status
+        await new Promise(r => setTimeout(r, 1500));
+        await loadPairs();
+        
+        // Show completion notification
+        const newState = pairStates[pairId] || {};
+        if (newState.running) {
+            showToast('success', 'Copier Started!', 'Trade copying is now active');
+        } else {
+            showToast('warning', 'Start Incomplete', 'Copier may have failed to start - check activity logs');
+        }
+    } catch(e) { 
+        showToast('error', 'Error', 'Failed to start copier');
+    }
+    
+    pairStates[pairId] = { ...pairStates[pairId], starting: false };
+    if (btn) { btn.disabled = false; btn.classList.remove('loading'); }
+}
+
+async function stopPair(pairId, event) {
+    if (event) event.stopPropagation();
+    const btn = event?.target?.closest('.pair-ctrl-btn');
+    if (btn) { btn.disabled = true; btn.classList.add('loading'); }
+    
+    // Show stopping state
+    pairStates[pairId] = { ...pairStates[pairId], stopping: true };
+    updatePairsListInPlace();
+    
+    try { 
+        const res = await fetch('/api/pairs/' + pairId + '/stop', { method: 'POST' }); 
+        const data = await res.json();
+        if (data.success) {
+            showToast('info', 'Stopping Copier...', 'Stopping trade copying...');
+        } else {
+            showToast('error', 'Stop Failed', data.error || 'Could not stop copier');
+            pairStates[pairId] = { ...pairStates[pairId], stopping: false };
+            if (btn) { btn.disabled = false; btn.classList.remove('loading'); }
+            return;
+        }
+        await new Promise(r => setTimeout(r, 2000));
+        await loadPairs();
+        
+        // Show completion notification
+        const newState = pairStates[pairId] || {};
+        if (!newState.running) {
+            showToast('success', 'Copier Stopped!', 'Trade copying has been stopped');
+        } else {
+            showToast('warning', 'Stop Incomplete', 'Copier may still be running');
+        }
+    } catch(e) { 
+        showToast('error', 'Error', 'Failed to stop copier');
+    }
+    
+    pairStates[pairId] = { ...pairStates[pairId], stopping: false };
+    if (btn) { btn.disabled = false; btn.classList.remove('loading'); }
+}
+
+async function activateAllPairs() {
+    for (const p of allPairs) {
+        if (!pairStates[p.id]?.activated) {
+            await activatePair(p.id, null);
+        }
     }
 }
 
-async function stopCopier() {
-    document.getElementById('btnStop').disabled = true;
-    try { 
-        await fetch('/api/pairs/' + selectedPairId + '/stop', { method: 'POST' }); 
-        setTimeout(loadData, 500); 
-    } catch(e) { 
-        document.getElementById('btnStop').disabled = false; 
+async function startAllPairs() {
+    for (const p of allPairs) {
+        const state = pairStates[p.id] || {};
+        if (state.activated && !state.running) {
+            await startPair(p.id, null);
+        }
+    }
+}
+
+async function stopAllPairs() {
+    for (const p of allPairs) {
+        const state = pairStates[p.id] || {};
+        if (state.running) {
+            await stopPair(p.id, null);
+        }
+    }
+}
+
+async function deactivateAllPairs() {
+    for (const p of allPairs) {
+        const state = pairStates[p.id] || {};
+        if (state.activated && !state.running) {
+            await deactivatePair(p.id, null);
+        }
     }
 }
 
 // Initialize
 loadPairs();
 
-// Auto-refresh every 5 seconds
+// Auto-refresh pair states every 10 seconds (lightweight status check)
 setInterval(() => {
     if (document.activeElement && document.activeElement.type === 'date') return;
-    loadData();
-}, 5000);
+    loadPairs();  // Refresh pair states (lightweight)
+}, 10000);
+
+// Refresh selected pair details every 10 seconds (MT5 data is throttled internally to 15s)
+setInterval(() => {
+    if (document.activeElement && document.activeElement.type === 'date') return;
+    if (selectedPairId) loadData();
+}, 10000);
 </script>
 {% endblock %}

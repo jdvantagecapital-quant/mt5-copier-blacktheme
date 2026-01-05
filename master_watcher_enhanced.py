@@ -46,7 +46,8 @@ CONFIG_FILE = os.path.join(DATA_DIR, "config.json")
 MAX_POSITIONS = 50
 POSITION_SIZE = 48
 MASTER_ACTIVITY_LOG_TEMPLATE = "master_activity_{pair_id}.json"
-MAX_ACTIVITY_LOGS = 100
+MAX_ACTIVITY_LOGS = 10000  # Keep 10000 entries per pair before rotating
+MASTER_ARCHIVE_MAX = 5  # Keep up to 5 archived files
 HEADER_SIZE = 28
 
 def log_to_database(pair_id, level, message, account_id=None):
@@ -56,6 +57,45 @@ def log_to_database(pair_id, level, message, account_id=None):
             db.add_log(pair_id, 'MASTER_WATCHER', level, message, account_id)
         except:
             pass
+
+def rotate_master_activity_if_needed(log_file, pair_id):
+    """Rotate master activity JSON if it exceeds MAX_ACTIVITY_LOGS"""
+    try:
+        if not os.path.exists(log_file):
+            return
+        
+        with open(log_file, 'r') as f:
+            activities = json.load(f)
+        
+        if len(activities) < MAX_ACTIVITY_LOGS:
+            return
+        
+        # Archive current log
+        archive_dir = os.path.join(DATA_DIR, 'logs', 'archive')
+        os.makedirs(archive_dir, exist_ok=True)
+        
+        # Rotate existing archives
+        for i in range(MASTER_ARCHIVE_MAX - 1, 0, -1):
+            old_file = os.path.join(archive_dir, f'master_activity_{pair_id}.{i}.json')
+            new_file = os.path.join(archive_dir, f'master_activity_{pair_id}.{i+1}.json')
+            if os.path.exists(old_file):
+                if i + 1 > MASTER_ARCHIVE_MAX:
+                    os.remove(old_file)
+                else:
+                    os.rename(old_file, new_file)
+        
+        # Archive current to .1
+        archive_file = os.path.join(archive_dir, f'master_activity_{pair_id}.1.json')
+        with open(archive_file, 'w') as f:
+            json.dump(activities, f)
+        
+        # Clear current log
+        with open(log_file, 'w') as f:
+            json.dump([], f)
+        
+        print(f"[INFO] Archived master activity for pair {pair_id} ({len(activities)} entries)")
+    except Exception as e:
+        print(f"[WARN] Master activity rotation failed: {e}")
 
 def save_master_activity(pair_id, message, log_type="INFO"):
     """Save master activity to JSON file for dashboard and database"""
@@ -80,7 +120,11 @@ def save_master_activity(pair_id, message, log_type="INFO"):
             "type": log_type
         }
         activities.insert(0, activity)
-        activities = activities[:MAX_ACTIVITY_LOGS]
+        
+        # Check if rotation needed
+        if len(activities) >= MAX_ACTIVITY_LOGS:
+            rotate_master_activity_if_needed(log_file, pair_id)
+            activities = [activity]  # Start fresh with just this entry
         
         with open(log_file, 'w') as f:
             json.dump(activities, f)
@@ -167,8 +211,8 @@ def main(pair_id):
     if not pair:
         return
     
-    # Get terminal path and strip any quotes
-    master_terminal = pair.get('master_terminal', '').strip('"').strip("'").strip()
+    # Get terminal path - strip whitespace/newlines first, then quotes
+    master_terminal = pair.get('master_terminal', '').strip().strip('"').strip("'")
     
     # Get account and convert to int
     master_account = pair.get('master_account', 0)

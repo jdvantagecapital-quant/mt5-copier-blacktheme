@@ -419,8 +419,8 @@ def main(pair_id, child_id):
     log.log(f"CHILD EXECUTOR STARTED - Pair: {pair_id}, Child: {child_id}", "INFO")
     log.log("=" * 50, "INFO")
     
-    # Get terminal path and strip any quotes
-    child_terminal = child.get('terminal', '').strip('"\'')
+    # Get terminal path and strip whitespace, newlines, and quotes
+    child_terminal = child.get('terminal', '').strip().strip('"').strip("'")
     child_password = child.get('password', '')
     child_server = child.get('server', '')
     

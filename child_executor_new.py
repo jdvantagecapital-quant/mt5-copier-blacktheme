@@ -737,8 +737,8 @@ def main(pair_id, child_id):
         log.log("ERROR: Configuration not found!", "ERROR")
         return
     
-    # Get terminal path and strip any quotes
-    child_terminal = child.get('terminal', '').strip('"\'')
+    # Get terminal path and strip whitespace, newlines, and quotes
+    child_terminal = child.get('terminal', '').strip().strip('"').strip("'")
     child_account = int(child.get('account', 0))
     child_password = child.get('password', '')
     child_server = child.get('server', '')

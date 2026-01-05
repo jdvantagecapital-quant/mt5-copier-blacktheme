@@ -173,7 +173,8 @@ def main(pair_id):
     if not pair:
         return
     
-    master_terminal = pair.get('master_terminal', '').strip('"').strip("'").strip()
+    # Strip whitespace/newlines first, then quotes
+    master_terminal = pair.get('master_terminal', '').strip().strip('"').strip("'")
     
     master_account = pair.get('master_account', 0)
     try:

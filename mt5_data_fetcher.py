@@ -1,40 +1,130 @@
 ﻿"""
 MT5 Data Fetcher - Direct fetching from MT5 terminals
 Fetches live positions, closed trades, and account info
+
+IMPORTANT: The MT5 Python library can only connect to ONE terminal at a time.
+Each account has its own terminal, so we must:
+1. Connect to the specific terminal using mt5.initialize(path=terminal_path)
+2. Fetch the data we need
+3. Shutdown before connecting to the next terminal
+
+This module connects to ALREADY RUNNING MT5 terminals.
+The Activate Pair feature opens the terminals first.
 """
 import MetaTrader5 as mt5
 from datetime import datetime, timedelta
-import json
+import os
+import hashlib
+
+# Track current connection to avoid unnecessary reconnects
+# We also track password hash so if password changes, we force re-login
+_current_terminal_path = None
+_current_login = None
+_current_password_hash = None
+
+
+def _connect_to_terminal(terminal_path, login, server, password):
+    """
+    Connect to a specific MT5 terminal and login to the account.
+    
+    The MT5 Python library can only connect to ONE terminal at a time.
+    If we need to connect to a different terminal, we must shutdown first.
+    
+    Returns (success, error_message)
+    """
+    global _current_terminal_path, _current_login, _current_password_hash
+    
+    try:
+        # Ensure login is an integer
+        login = int(login) if login else 0
+        if not login:
+            return False, 'Invalid login account number'
+        
+        # Clean and normalize terminal path - strip whitespace, newlines, quotes
+        if terminal_path:
+            terminal_path = terminal_path.strip().strip('"').strip("'")
+        norm_path = os.path.normpath(terminal_path) if terminal_path else None
+        
+        # Hash password for comparison (so we don't store plaintext)
+        pwd_hash = hashlib.md5(password.encode()).hexdigest() if password else None
+        
+        # Check if we're already connected to this exact terminal, account AND same password
+        if _current_terminal_path == norm_path and _current_login == login and _current_password_hash == pwd_hash:
+            # Verify connection is still alive
+            if mt5.terminal_info() is not None:
+                account_info = mt5.account_info()
+                if account_info and account_info.login == login:
+                    return True, None
+        
+        # Need to connect to a different terminal - shutdown current first
+        try:
+            mt5.shutdown()
+        except:
+            pass
+        
+        _current_terminal_path = None
+        _current_login = None
+        
+        # Initialize MT5 with specific terminal path
+        if terminal_path and os.path.exists(terminal_path):
+            if not mt5.initialize(path=terminal_path):
+                error = mt5.last_error()
+                return False, f'Failed to connect to terminal {terminal_path}: {error}'
+        else:
+            # No terminal path - try default
+            if not mt5.initialize():
+                return False, 'MT5 not connected - please activate the pair first or set terminal path'
+        
+        _current_terminal_path = norm_path
+        
+        # Check if already logged into correct account with same password
+        account_info = mt5.account_info()
+        if account_info is not None and account_info.login == login:
+            _current_login = login
+            _current_password_hash = pwd_hash
+            return True, None
+        
+        # Need to login
+        if password:
+            if not mt5.login(login=login, password=password, server=server):
+                error = mt5.last_error()
+                return False, f'Login failed for {login}: {error}'
+            _current_login = login
+            _current_password_hash = pwd_hash
+            return True, None
+        else:
+            # No password - check if terminal is already logged in
+            if account_info is not None:
+                # Terminal is logged into a different account
+                return False, f'Terminal is logged into {account_info.login}, not {login}. Please provide password.'
+            return False, 'No account logged in and no password provided'
+            
+    except Exception as e:
+        return False, str(e)
+
+
+def _disconnect():
+    """Disconnect from current terminal"""
+    global _current_terminal_path, _current_login, _current_password_hash
+    try:
+        mt5.shutdown()
+    except:
+        pass
+    _current_terminal_path = None
+    _current_login = None
+    _current_password_hash = None
 
 
 def get_mt5_positions(login, server, password=None, terminal_path=None):
     """Get current open positions from MT5 account"""
     try:
-        # Initialize MT5
-        if terminal_path:
-            if not mt5.initialize(path=terminal_path):
-                return {'success': False, 'error': f'MT5 init failed: {mt5.last_error()}'}
-        else:
-            if not mt5.initialize():
-                return {'success': False, 'error': f'MT5 init failed: {mt5.last_error()}'}
+        # Connect to the specific terminal for this account
+        success, error = _connect_to_terminal(terminal_path, login, server, password)
+        if not success:
+            return {'success': False, 'error': error}
         
-        # Check if already logged in (terminal running)
         account_info = mt5.account_info()
-        
-        # If not logged in and password provided, try login
-        if account_info is None or account_info.login != login:
-            if password:
-                if not mt5.login(login=login, password=password, server=server):
-                    mt5.shutdown()
-                    return {'success': False, 'error': f'Login failed: {mt5.last_error()}'}
-                account_info = mt5.account_info()
-            else:
-                # No password and not logged in
-                mt5.shutdown()
-                return {'success': False, 'error': 'Terminal not logged in and no password provided'}
-        
         if account_info is None:
-            mt5.shutdown()
             return {'success': False, 'error': 'Failed to get account info'}
         
         # Get positions
@@ -75,39 +165,26 @@ def get_mt5_positions(login, server, password=None, terminal_path=None):
             'count': len(positions_list)
         }
         
-        mt5.shutdown()
+        # Don't disconnect here - let next call handle it if needed
         return result
         
     except Exception as e:
-        try:
-            mt5.shutdown()
-        except:
-            pass
         return {'success': False, 'error': str(e)}
 
 
 def get_mt5_history(login, server, password=None, terminal_path=None, days=30, date_from=None, date_to=None):
     """Get trade history from MT5 account"""
     try:
-        # Initialize MT5
-        if terminal_path:
-            if not mt5.initialize(path=terminal_path):
-                return {'success': False, 'error': f'MT5 init failed: {mt5.last_error()}'}
-        else:
-            if not mt5.initialize():
-                return {'success': False, 'error': f'MT5 init failed: {mt5.last_error()}'}
-        
-        # Login if credentials provided
-        if password:
-            if not mt5.login(login=login, password=password, server=server):
-                mt5.shutdown()
-                return {'success': False, 'error': f'Login failed: {mt5.last_error()}'}
+        # Connect to the specific terminal for this account
+        success, error = _connect_to_terminal(terminal_path, login, server, password)
+        if not success:
+            return {'success': False, 'error': error}
         
         # Get history date range
         if date_from and date_to:
             try:
                 from_date = datetime.strptime(date_from, '%Y-%m-%d')
-                to_date = datetime.strptime(date_to, '%Y-%m-%d') + timedelta(days=1)  # Include end date
+                to_date = datetime.strptime(date_to, '%Y-%m-%d') + timedelta(days=1)
             except:
                 from_date = datetime.now() - timedelta(days=days)
                 to_date = datetime.now()
@@ -119,7 +196,7 @@ def get_mt5_history(login, server, password=None, terminal_path=None, days=30, d
         if deals is None:
             deals = []
         
-        # Convert deals to dict - filter only BUY/SELL trades (not balance, etc)
+        # Convert deals to dict - filter only BUY/SELL trades
         deals_list = []
         for deal in deals:
             if deal.type in [0, 1]:  # Only BUY and SELL
@@ -141,7 +218,6 @@ def get_mt5_history(login, server, password=None, terminal_path=None, days=30, d
                     'comment': deal.comment
                 })
         
-        mt5.shutdown()
         return {
             'success': True,
             'deals': deals_list,
@@ -151,10 +227,6 @@ def get_mt5_history(login, server, password=None, terminal_path=None, days=30, d
         }
         
     except Exception as e:
-        try:
-            mt5.shutdown()
-        except:
-            pass
         return {'success': False, 'error': str(e)}
 
 
@@ -184,19 +256,10 @@ def get_deal_type_str(deal_type):
 def get_mt5_closed_orders(login, server, password=None, terminal_path=None, days=30, date_from=None, date_to=None):
     """Get closed orders from MT5 account"""
     try:
-        # Initialize MT5
-        if terminal_path:
-            if not mt5.initialize(path=terminal_path):
-                return {'success': False, 'error': f'MT5 init failed: {mt5.last_error()}'}
-        else:
-            if not mt5.initialize():
-                return {'success': False, 'error': f'MT5 init failed: {mt5.last_error()}'}
-        
-        # Login if credentials provided
-        if password:
-            if not mt5.login(login=login, password=password, server=server):
-                mt5.shutdown()
-                return {'success': False, 'error': f'Login failed: {mt5.last_error()}'}
+        # Connect to the specific terminal for this account
+        success, error = _connect_to_terminal(terminal_path, login, server, password)
+        if not success:
+            return {'success': False, 'error': error}
         
         # Get history date range
         if date_from and date_to:
@@ -235,7 +298,6 @@ def get_mt5_closed_orders(login, server, password=None, terminal_path=None, days
                     'comment': order.comment
                 })
         
-        mt5.shutdown()
         return {
             'success': True,
             'orders': orders_list,
@@ -245,15 +307,16 @@ def get_mt5_closed_orders(login, server, password=None, terminal_path=None, days
         }
         
     except Exception as e:
-        try:
-            mt5.shutdown()
-        except:
-            pass
         return {'success': False, 'error': str(e)}
 
 
 def get_account_live_data(login, server, password=None, terminal_path=None, date_from=None, date_to=None, days=30):
-    """Get all account data - positions, history, balance in one call"""
+    """
+    Get all account data - positions, history, balance in one call.
+    
+    IMPORTANT: Each account must have its own terminal_path.
+    The MT5 library can only connect to one terminal at a time.
+    """
     result = {
         'success': False,
         'balance': 0,
@@ -264,31 +327,21 @@ def get_account_live_data(login, server, password=None, terminal_path=None, date
     }
     
     try:
-        # Initialize MT5
-        if terminal_path:
-            if not mt5.initialize(path=terminal_path):
-                result['error'] = f'MT5 init failed: {mt5.last_error()}'
-                return result
-        else:
-            if not mt5.initialize():
-                result['error'] = f'MT5 init failed: {mt5.last_error()}'
-                return result
+        # Connect to the specific terminal for this account
+        success, error = _connect_to_terminal(terminal_path, login, server, password)
+        if not success:
+            result['error'] = error
+            return result
         
-        # Check account info
+        # Get account info
         account_info = mt5.account_info()
-        
-        # Login if needed
-        if account_info is None or account_info.login != login:
-            if password:
-                if not mt5.login(login=login, password=password, server=server):
-                    mt5.shutdown()
-                    result['error'] = f'Login failed: {mt5.last_error()}'
-                    return result
-                account_info = mt5.account_info()
-        
         if account_info is None:
-            mt5.shutdown()
             result['error'] = 'Failed to get account info'
+            return result
+        
+        # Verify we're connected to the right account
+        if account_info.login != login:
+            result['error'] = f'Connected to wrong account: {account_info.login} instead of {login}'
             return result
         
         result['balance'] = round(account_info.balance, 2)
@@ -334,13 +387,8 @@ def get_account_live_data(login, server, password=None, terminal_path=None, date
                     })
         
         result['success'] = True
-        mt5.shutdown()
         return result
         
     except Exception as e:
-        try:
-            mt5.shutdown()
-        except:
-            pass
         result['error'] = str(e)
         return result
