@@ -10,6 +10,7 @@ import json
 import time
 import struct
 import mmap
+import subprocess
 from datetime import datetime
 
 # Determine the base directory
@@ -38,6 +39,38 @@ try:
 except ImportError:
     print("ERROR: MetaTrader5 module not found. Please install it with: pip install MetaTrader5")
     sys.exit(1)
+
+def close_mt5_terminal(terminal_path=None):
+    """Close the MT5 terminal window by terminating the process"""
+    try:
+        print(f"Closing MT5 terminal (path={terminal_path})...")
+        # First try graceful shutdown
+        mt5.shutdown()
+        time.sleep(0.5)
+        
+        # Then forcefully kill the terminal process
+        if terminal_path and os.path.exists(terminal_path):
+            terminal_name = os.path.basename(terminal_path)
+            print(f"Killing MT5 process: {terminal_name}")
+            # Use taskkill to terminate the specific MT5 process
+            try:
+                result = subprocess.run(['taskkill', '/F', '/IM', terminal_name], 
+                              capture_output=True, text=True, timeout=5)
+                print(f"Taskkill result: {result.returncode} - {result.stdout} {result.stderr}")
+            except Exception as e:
+                print(f"Taskkill error: {e}")
+        else:
+            # Kill all terminal64.exe processes as fallback
+            print("Killing terminal64.exe (fallback)...")
+            try:
+                result = subprocess.run(['taskkill', '/F', '/IM', 'terminal64.exe'], 
+                              capture_output=True, text=True, timeout=5)
+                print(f"Taskkill result: {result.returncode} - {result.stdout} {result.stderr}")
+            except Exception as e:
+                print(f"Taskkill error: {e}")
+        print("MT5 terminal close complete.")
+    except Exception as e:
+        print(f"Error closing MT5 terminal: {e}")
 
 # Constants
 POSITION_SIZE = 48  # bytes per position: ticket(8)+type(1)+volume(8)+sl(8)+tp(8)+symbol(15)
@@ -271,6 +304,9 @@ def open_trade(symbol, trade_type, volume, sl, tp, magic, comment, log, copy_mod
     """Open a new trade on child account with retry logic"""
     max_retries = 3
     
+    # DEBUG: Log incoming values
+    log.log(f"open_trade CALLED: symbol={symbol}, type={trade_type}, vol={volume}, sl={sl}, tp={tp}, mode={copy_mode}", "DEBUG")
+    
     # Handle copy modes BEFORE the retry loop
     original_type = trade_type
     original_sl = sl
@@ -278,16 +314,12 @@ def open_trade(symbol, trade_type, volume, sl, tp, magic, comment, log, copy_mod
     
     if copy_mode == 'reverse':
         trade_type = 1 if trade_type == 0 else 0
-        # CRITICAL: Also swap SL and TP for reverse mode
-        if sl > 0 and tp > 0:
-            sl, tp = tp, sl  # Swap both
-        elif sl > 0 and tp == 0:
-            tp = sl
-            sl = 0
-        elif tp > 0 and sl == 0:
-            sl = tp
-            tp = 0
-        log.log(f"REVERSE: Direction {original_type}->{trade_type}, SL {original_sl}->{sl}, TP {original_tp}->{tp}", "DEBUG")
+        # SIMPLE SWAP: For reverse mode, SL becomes TP and TP becomes SL
+        if sl > 0 or tp > 0:
+            old_sl, old_tp = sl, tp
+            sl = old_tp  # New SL = Old TP
+            tp = old_sl  # New TP = Old SL
+            log.log(f"REVERSE SWAP: Original SL={old_sl}, TP={old_tp} -> New SL={sl}, TP={tp}", "INFO")
     elif copy_mode == 'only_buy':
         if trade_type != 0:  # Not a BUY
             log.log(f"Skipping SELL signal - only_buy mode active", "INFO")
@@ -354,6 +386,9 @@ def open_trade(symbol, trade_type, volume, sl, tp, magic, comment, log, copy_mod
             if tp > 0:
                 request["tp"] = tp
             
+            # DEBUG: Log final request details
+            log.log(f"SENDING REQUEST: type={type_str}, price={price:.5f}, SL={request.get('sl', 0)}, TP={request.get('tp', 0)}", "DEBUG")
+            
             result = mt5.order_send(request)
             
             if result is None:
@@ -368,6 +403,33 @@ def open_trade(symbol, trade_type, volume, sl, tp, magic, comment, log, copy_mod
                 tp_str = f" TP:{tp:.5f}" if tp > 0 else ""
                 mode_str = f" [{copy_mode.upper()}]" if copy_mode != 'normal' else ""
                 log.log(f"OPENED {type_str} {volume} {symbol} @ {price:.5f}{sl_str}{tp_str}{mode_str}", "TRADE")
+                
+                # CRITICAL: Some brokers don't set SL/TP during order creation
+                # Verify and modify if needed
+                if (sl > 0 or tp > 0) and result.deal > 0:
+                    time.sleep(0.15)  # Small delay for position to register
+                    # Find the new position by deal
+                    positions = mt5.positions_get(symbol=symbol)
+                    if positions:
+                        # Find the position created by this deal
+                        for pos in positions:
+                            if pos.magic == magic or (result.order and pos.ticket == result.order):
+                                needs_modify = False
+                                current_sl = pos.sl
+                                current_tp = pos.tp
+                                
+                                if sl > 0 and abs(current_sl - sl) > 0.00001:
+                                    needs_modify = True
+                                    log.log(f"SL mismatch: wanted {sl}, got {current_sl}", "DEBUG")
+                                if tp > 0 and abs(current_tp - tp) > 0.00001:
+                                    needs_modify = True
+                                    log.log(f"TP mismatch: wanted {tp}, got {current_tp}", "DEBUG")
+                                
+                                if needs_modify:
+                                    log.log(f"Position SL/TP not set on creation, modifying: SL={sl}, TP={tp}", "DEBUG")
+                                    modify_sltp(pos.ticket, symbol, sl, tp, log)
+                                break
+                
                 return True
             elif result.retcode in [mt5.TRADE_RETCODE_REQUOTE, mt5.TRADE_RETCODE_PRICE_OFF]:
                 log.log(f"Requote for {symbol}, retrying... ({attempt+1}/{max_retries})", "WARN")
@@ -582,18 +644,14 @@ def open_pending_order(symbol, order_type, volume, price, sl, tp, master_ticket,
             # - BUY_LIMIT at 1.0900 (below current) -> SELL_STOP at 1.0900 (also needs below current) 
             # - SELL_LIMIT at 1.1100 (above current) -> BUY_STOP at 1.1100 (also needs above current) 
             
-            # Swap SL and TP for reverse mode
-            if sl > 0 and tp > 0:
-                sl, tp = tp, sl
-            elif sl > 0 and tp == 0:
-                tp = sl
-                sl = 0
-            elif tp > 0 and sl == 0:
-                sl = tp
-                tp = 0
+            # SIMPLE SWAP: SL becomes TP and TP becomes SL
+            if sl > 0 or tp > 0:
+                old_sl, old_tp = sl, tp
+                sl = old_tp  # New SL = Old TP
+                tp = old_sl  # New TP = Old SL
             
             order_names = {2: 'BUY_LIMIT', 3: 'SELL_LIMIT', 4: 'BUY_STOP', 5: 'SELL_STOP'}
-            log.log(f"REVERSE PENDING: {order_names.get(original_type, original_type)}->{order_names.get(order_type, order_type)}, Price={price:.5f}, SL {original_sl}->{sl}, TP {original_tp}->{tp}", "DEBUG")
+            log.log(f"REVERSE PENDING: {order_names.get(original_type, original_type)}->{order_names.get(order_type, order_type)}, Price={price:.5f}, SL {original_sl}->{sl}, TP {original_tp}->{tp}", "INFO")
         
         log.log(f"open_pending_order: {symbol} type={order_type} vol={volume} price={price} sl={sl} tp={tp}", "DEBUG")
         info = mt5.symbol_info(symbol)
@@ -648,7 +706,25 @@ def open_pending_order(symbol, order_type, volume, price, sl, tp, master_ticket,
         if result.retcode == mt5.TRADE_RETCODE_DONE:
             order_name = ['','','BUY_LIMIT','SELL_LIMIT','BUY_STOP','SELL_STOP'][order_type] if order_type <= 5 else 'PENDING'
             mode_str = f" [{copy_mode.upper()}]" if copy_mode != 'normal' else ""
-            log.log(f"Pending order placed: {order_name} {volume} {symbol} @ {price}{mode_str}", "TRADE")
+            log.log(f"Pending order placed: {order_name} {volume} {symbol} @ {price}{mode_str} (order #{result.order})", "TRADE")
+            
+            # Some brokers don't accept SL/TP on pending order creation
+            # Try to modify the order to set SL/TP if they weren't set
+            if (sl > 0 or tp > 0) and result.order > 0:
+                time.sleep(0.1)  # Small delay for order to register
+                orders = mt5.orders_get(ticket=result.order)
+                if orders:
+                    order = orders[0]
+                    needs_modify = False
+                    if sl > 0 and abs(order.sl - sl) > 0.00001:
+                        needs_modify = True
+                    if tp > 0 and abs(order.tp - tp) > 0.00001:
+                        needs_modify = True
+                    
+                    if needs_modify:
+                        log.log(f"Order SL/TP not set on creation, modifying: SL={sl}, TP={tp}", "DEBUG")
+                        modify_pending_sltp(result.order, sl, tp, log)
+            
             return True
         else:
             log.log(f"Pending order failed: {result.retcode} - {result.comment}", "ERROR")
@@ -872,8 +948,12 @@ def main(pair_id, child_id):
                 
                 # Check if pair and child are enabled
                 if not pair.get('enabled', True) or not child.get('enabled', True):
-                    time.sleep(0.5)
-                    continue
+                    log.log("Child or pair disabled - shutting down and closing MT5 terminal", "INFO")
+                    print("Child or pair disabled - closing MT5 terminal...")
+                    close_mt5_terminal(child_terminal)  # Use the already-extracted variable
+                    log.log("MT5 terminal closed. Exiting.", "INFO")
+                    print("Exiting child executor.")
+                    return  # Exit the function completely
                 
                 # Check if we're within the active copy period
                 copy_period_enabled = child.get('copy_period_enabled', False)
@@ -936,11 +1016,12 @@ def main(pair_id, child_id):
                     if len(pos_data) < POSITION_SIZE:
                         break
                     
-                    ticket = struct.unpack('Q', pos_data[0:8])[0]
-                    ptype = struct.unpack('B', pos_data[8:9])[0]
-                    volume = struct.unpack('d', pos_data[9:17])[0]
-                    sl = struct.unpack('d', pos_data[17:25])[0]
-                    tp = struct.unpack('d', pos_data[25:33])[0]
+                    # Use little-endian to match master_watcher_new.py
+                    ticket = struct.unpack('<Q', pos_data[0:8])[0]
+                    ptype = struct.unpack('<B', pos_data[8:9])[0]
+                    volume = struct.unpack('<d', pos_data[9:17])[0]
+                    sl = struct.unpack('<d', pos_data[17:25])[0]
+                    tp = struct.unpack('<d', pos_data[25:33])[0]
                     symbol = pos_data[33:48].decode('utf-8').rstrip('\x00')
                     
                     master_now[ticket] = {
@@ -1043,13 +1124,22 @@ def main(pair_id, child_id):
                         
                         log.log(f"NEW SIGNAL: {pos['symbol']} detected from master", "SIGNAL")
                         
+                        # DEBUG: Log raw position data from shared memory
+                        raw_sl = pos['sl']
+                        raw_tp = pos['tp']
+                        log.log(f"RAW from shared mem: type={pos['type']}, sl={raw_sl}, tp={raw_tp}, copy_sl={copy_sl}, copy_tp={copy_tp}, copy_mode={copy_mode}", "DEBUG")
+                        
                         mapped_symbol = map_symbol(pos['symbol'], child, pair)
+                        final_sl = pos['sl'] if copy_sl else 0
+                        final_tp = pos['tp'] if copy_tp else 0
+                        log.log(f"PASSING to open_trade: sl={final_sl}, tp={final_tp}", "DEBUG")
+                        
                         success = open_trade(
                             mapped_symbol, 
                             pos['type'], 
                             child_volume,
-                            pos['sl'] if copy_sl else 0,
-                            pos['tp'] if copy_tp else 0,
+                            final_sl,
+                            final_tp,
                             master_ticket,
                             f"copy_{master_ticket}",
                             log,
@@ -1097,14 +1187,12 @@ def main(pair_id, child_id):
                                 
                                 # REVERSE mode: Swap SL and TP for opposite positions
                                 if copy_mode == 'reverse':
-                                    if new_sl > 0 and new_tp > 0:
-                                        new_sl, new_tp = new_tp, new_sl  # Swap both
-                                    elif new_sl > 0 and new_tp == 0:
-                                        new_tp = new_sl
-                                        new_sl = 0
-                                    elif new_tp > 0 and new_sl == 0:
-                                        new_sl = new_tp
-                                        new_tp = 0
+                                    # SIMPLE SWAP: SL becomes TP and TP becomes SL
+                                    if new_sl > 0 or new_tp > 0:
+                                        old_sl, old_tp = new_sl, new_tp
+                                        new_sl = old_tp  # New SL = Old TP
+                                        new_tp = old_sl  # New TP = Old SL
+                                        log.log(f"REVERSE SWAP (modify): Original SL={old_sl}, TP={old_tp} -> New SL={new_sl}, TP={new_tp}", "INFO")
                                 
                                 # Check if SL/TP changed
                                 if abs(cp.sl - new_sl) > 0.00001 or abs(cp.tp - new_tp) > 0.00001:
@@ -1204,12 +1292,13 @@ def main(pair_id, child_id):
                             if len(ord_data) < ORDER_SIZE:
                                 break
                             
-                            ticket = struct.unpack('Q', ord_data[0:8])[0]
-                            otype = struct.unpack('B', ord_data[8:9])[0]
-                            volume = struct.unpack('d', ord_data[9:17])[0]
-                            price = struct.unpack('d', ord_data[17:25])[0]
-                            o_sl = struct.unpack('d', ord_data[25:33])[0]
-                            o_tp = struct.unpack('d', ord_data[33:41])[0]
+                            # Use little-endian to match master_watcher_new.py
+                            ticket = struct.unpack('<Q', ord_data[0:8])[0]
+                            otype = struct.unpack('<B', ord_data[8:9])[0]
+                            volume = struct.unpack('<d', ord_data[9:17])[0]
+                            price = struct.unpack('<d', ord_data[17:25])[0]
+                            o_sl = struct.unpack('<d', ord_data[25:33])[0]
+                            o_tp = struct.unpack('<d', ord_data[33:41])[0]
                             symbol = ord_data[41:56].decode('utf-8').rstrip('\x00')
                             
                             master_orders[ticket] = {
@@ -1311,14 +1400,11 @@ def main(pair_id, child_id):
                                 child_sl = master_sl
                                 child_tp = master_tp
                                 if copy_mode == 'reverse':
-                                    if master_sl > 0 and master_tp > 0:
-                                        child_sl, child_tp = master_tp, master_sl
-                                    elif master_sl > 0 and master_tp == 0:
-                                        child_tp = master_sl
-                                        child_sl = 0
-                                    elif master_tp > 0 and master_sl == 0:
-                                        child_sl = master_tp
-                                        child_tp = 0
+                                    # SIMPLE SWAP: SL becomes TP and TP becomes SL
+                                    if master_sl > 0 or master_tp > 0:
+                                        child_sl = master_tp  # New SL = Old TP
+                                        child_tp = master_sl  # New TP = Old SL
+                                        log.log(f"REVERSE SWAP (pending modify): SL={master_sl}->{child_sl}, TP={master_tp}->{child_tp}", "INFO")
                                 
                                 if price_diff > 0.00001 or sl_diff > 0.00001 or tp_diff > 0.00001:
                                     # Rate limit: skip if last modification failed within 5 seconds
@@ -1442,7 +1528,7 @@ def main(pair_id, child_id):
             mm.close()
         if f:
             f.close()
-        mt5.shutdown()
+        close_mt5_terminal(child_terminal)
         log.log("Child executor stopped.", "INFO")
 
 if __name__ == "__main__":
