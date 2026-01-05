@@ -392,3 +392,66 @@ def get_account_live_data(login, server, password=None, terminal_path=None, date
     except Exception as e:
         result['error'] = str(e)
         return result
+
+
+def get_market_watch(login, server, password=None, terminal_path=None):
+    """Get all symbols from Market Watch with their current prices and daily change"""
+    try:
+        # Connect to the specific terminal for this account
+        success, error = _connect_to_terminal(terminal_path, login, server, password)
+        if not success:
+            return {'success': False, 'error': error, 'symbols': []}
+        
+        # Get all symbols visible in Market Watch
+        symbols = mt5.symbols_get()
+        if symbols is None:
+            return {'success': False, 'error': 'Failed to get symbols', 'symbols': []}
+        
+        market_data = []
+        for sym in symbols:
+            # Only include symbols that are visible in Market Watch
+            if not sym.visible:
+                continue
+            
+            # Get tick data for the symbol
+            tick = mt5.symbol_info_tick(sym.name)
+            if tick is None:
+                continue
+            
+            # Get symbol info for additional details
+            info = mt5.symbol_info(sym.name)
+            if info is None:
+                continue
+            
+            # Get today's daily bar to calculate daily change
+            # TIMEFRAME_D1 = daily, we get the current day's open
+            daily_bars = mt5.copy_rates_from_pos(sym.name, mt5.TIMEFRAME_D1, 0, 1)
+            
+            daily_open = 0
+            daily_change_pct = 0
+            if daily_bars is not None and len(daily_bars) > 0:
+                daily_open = daily_bars[0]['open']
+                current_price = tick.bid if tick.bid > 0 else tick.last
+                if daily_open > 0 and current_price > 0:
+                    daily_change_pct = ((current_price - daily_open) / daily_open) * 100
+            
+            market_data.append({
+                'symbol': sym.name,
+                'bid': tick.bid,
+                'ask': tick.ask,
+                'last': tick.last if tick.last > 0 else (tick.bid + tick.ask) / 2,
+                'spread': round((tick.ask - tick.bid) / info.point) if info.point > 0 else 0,
+                'daily_open': round(daily_open, info.digits) if daily_open > 0 else 0,
+                'daily_change': round(daily_change_pct, 2),
+                'time': datetime.fromtimestamp(tick.time).strftime('%H:%M:%S') if tick.time > 0 else '',
+                'digits': info.digits
+            })
+        
+        return {
+            'success': True,
+            'symbols': market_data,
+            'count': len(market_data)
+        }
+        
+    except Exception as e:
+        return {'success': False, 'error': str(e), 'symbols': []}

@@ -9567,7 +9567,197 @@
 
 
 
-        .main-content { padding: 32px; min-height: calc(100vh - var(--header-height)); padding-bottom: 60px; }
+        .main-content { padding: 32px; min-height: calc(100vh - var(--header-height)); padding-bottom: 100px; }
+
+        /* Market Data Ticker - Premium Gold/Amber Theme */
+        .market-ticker {
+            position: fixed;
+            bottom: 36px;
+            left: var(--sidebar-width);
+            right: 0;
+            background: linear-gradient(90deg, #1a1a0f 0%, #2d2a1a 25%, #1a1a0f 50%, #2d2a1a 75%, #1a1a0f 100%);
+            border-top: 2px solid;
+            border-image: linear-gradient(90deg, #d4af37, #ffd700, #f0c14b, #ffd700, #d4af37) 1;
+            padding: 8px 0;
+            z-index: 1001;
+            overflow: hidden;
+            transition: left var(--transition-slow);
+            box-shadow: 0 -4px 20px rgba(212, 175, 55, 0.15);
+        }
+        .sidebar.collapsed ~ .market-ticker { left: var(--sidebar-collapsed); }
+        .market-ticker-content {
+            display: flex;
+            animation: market-scroll 45s linear infinite;
+            white-space: nowrap;
+        }
+        .market-ticker-item {
+            display: inline-flex;
+            align-items: center;
+            padding: 0 24px;
+            border-right: 1px solid rgba(212, 175, 55, 0.2);
+            position: relative;
+        }
+        .market-ticker-item::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 4px;
+            height: 4px;
+            background: radial-gradient(circle, #ffd700, transparent);
+            border-radius: 50%;
+            opacity: 0.6;
+        }
+        .market-ticker-symbol {
+            font-weight: 700;
+            background: linear-gradient(135deg, #ffd700, #f0c14b, #d4af37);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-right: 10px;
+            font-size: 12px;
+            letter-spacing: 0.5px;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+        }
+        .market-ticker-price {
+            color: #fff;
+            font-size: 12px;
+            font-weight: 600;
+            font-family: 'Consolas', 'Monaco', monospace;
+            letter-spacing: 0.3px;
+        }
+        .market-ticker-change {
+            margin-left: 8px;
+            font-size: 10px;
+            font-weight: 600;
+            padding: 2px 6px;
+            border-radius: 4px;
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+        }
+        .market-ticker-change.up {
+            background: linear-gradient(135deg, rgba(0, 200, 83, 0.2), rgba(0, 200, 83, 0.1));
+            color: #00e676;
+            border: 1px solid rgba(0, 200, 83, 0.3);
+        }
+        .market-ticker-change.down {
+            background: linear-gradient(135deg, rgba(255, 82, 82, 0.2), rgba(255, 82, 82, 0.1));
+            color: #ff5252;
+            border: 1px solid rgba(255, 82, 82, 0.3);
+        }
+        .market-ticker-change.neutral {
+            background: rgba(255, 255, 255, 0.05);
+            color: #888;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .market-ticker-loading {
+            color: #d4af37;
+            font-size: 12px;
+            padding: 0 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .market-ticker-loading i {
+            animation: pulse-gold 1.5s ease-in-out infinite;
+        }
+        @keyframes pulse-gold {
+            0%, 100% { opacity: 0.5; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.1); }
+        }
+        @keyframes market-scroll {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+        .market-ticker:hover .market-ticker-content { animation-play-state: paused; }
+        
+        /* Light theme for market ticker */
+        html[data-theme="light"] .market-ticker { 
+            background: linear-gradient(90deg, #fffef5 0%, #fff8e1 25%, #fffef5 50%, #fff8e1 75%, #fffef5 100%); 
+            border-image: linear-gradient(90deg, #b8860b, #daa520, #cd853f, #daa520, #b8860b) 1;
+            box-shadow: 0 -4px 20px rgba(184, 134, 11, 0.1);
+        }
+        html[data-theme="light"] .market-ticker-symbol { 
+            background: linear-gradient(135deg, #b8860b, #cd853f, #8b6914);
+            -webkit-background-clip: text;
+            background-clip: text;
+        }
+        html[data-theme="light"] .market-ticker-price { color: #3d3d3d; }
+        html[data-theme="light"] .market-ticker-item { border-right-color: rgba(184, 134, 11, 0.2); }
+        html[data-theme="light"] .market-ticker-item::before { background: radial-gradient(circle, #b8860b, transparent); }
+        html[data-theme="light"] .market-ticker-loading { color: #b8860b; }
+        html[data-theme="light"] .market-ticker-change.up { 
+            background: linear-gradient(135deg, rgba(0, 150, 60, 0.15), rgba(0, 150, 60, 0.08));
+            color: #00a854;
+            border-color: rgba(0, 150, 60, 0.3);
+        }
+        html[data-theme="light"] .market-ticker-change.down { 
+            background: linear-gradient(135deg, rgba(220, 50, 50, 0.15), rgba(220, 50, 50, 0.08));
+            color: #dc3232;
+            border-color: rgba(220, 50, 50, 0.3);
+        }
+        
+        /* Price flash animations for live updates */
+        .market-ticker-price.flash-up {
+            animation: priceFlashUp 0.3s ease-out;
+        }
+        .market-ticker-price.flash-down {
+            animation: priceFlashDown 0.3s ease-out;
+        }
+        @keyframes priceFlashUp {
+            0% { color: #00e676; text-shadow: 0 0 8px rgba(0, 230, 118, 0.8); }
+            100% { color: #fff; text-shadow: none; }
+        }
+        @keyframes priceFlashDown {
+            0% { color: #ff5252; text-shadow: 0 0 8px rgba(255, 82, 82, 0.8); }
+            100% { color: #fff; text-shadow: none; }
+        }
+        html[data-theme="light"] .market-ticker-price.flash-up {
+            animation: priceFlashUpLight 0.3s ease-out;
+        }
+        html[data-theme="light"] .market-ticker-price.flash-down {
+            animation: priceFlashDownLight 0.3s ease-out;
+        }
+        @keyframes priceFlashUpLight {
+            0% { color: #00a854; text-shadow: 0 0 8px rgba(0, 168, 84, 0.6); }
+            100% { color: #3d3d3d; text-shadow: none; }
+        }
+        @keyframes priceFlashDownLight {
+            0% { color: #dc3232; text-shadow: 0 0 8px rgba(220, 50, 50, 0.6); }
+            100% { color: #3d3d3d; text-shadow: none; }
+        }
+        
+        /* Daily change flash animations */
+        .market-ticker-change.flash-change-up {
+            animation: changeFlashUp 0.3s ease-out;
+        }
+        .market-ticker-change.flash-change-down {
+            animation: changeFlashDown 0.3s ease-out;
+        }
+        @keyframes changeFlashUp {
+            0% { transform: scale(1.15); text-shadow: 0 0 10px rgba(0, 230, 118, 0.9); }
+            100% { transform: scale(1); text-shadow: none; }
+        }
+        @keyframes changeFlashDown {
+            0% { transform: scale(1.15); text-shadow: 0 0 10px rgba(255, 82, 82, 0.9); }
+            100% { transform: scale(1); text-shadow: none; }
+        }
+        html[data-theme="light"] .market-ticker-change.flash-change-up {
+            animation: changeFlashUpLight 0.3s ease-out;
+        }
+        html[data-theme="light"] .market-ticker-change.flash-change-down {
+            animation: changeFlashDownLight 0.3s ease-out;
+        }
+        @keyframes changeFlashUpLight {
+            0% { transform: scale(1.15); text-shadow: 0 0 8px rgba(0, 168, 84, 0.7); }
+            100% { transform: scale(1); text-shadow: none; }
+        }
+        @keyframes changeFlashDownLight {
+            0% { transform: scale(1.15); text-shadow: 0 0 8px rgba(220, 50, 50, 0.7); }
+            100% { transform: scale(1); text-shadow: none; }
+        }
 
         /* Disclaimer Ticker */
         .disclaimer-ticker {
@@ -11387,6 +11577,13 @@
 
 
 
+
+    <!-- Market Data Ticker -->
+    <div class="market-ticker">
+        <div class="market-ticker-content" id="marketTickerContent">
+            <span class="market-ticker-loading"><i class="fas fa-chart-line"></i> Loading market data...</span>
+        </div>
+    </div>
 
     <!-- Disclaimer Ticker -->
     <div class="disclaimer-ticker">
@@ -13533,6 +13730,179 @@
 
 
         window.closeModal = closeModal;
+
+        // Market Data Ticker - Live data from MT5 Market Watch (flicker-free updates)
+        let marketPrices = {};
+        let marketDailyChanges = {};
+        let currentSymbolList = [];
+        let tickerInitialized = false;
+        
+        function updateTickerValues(symbols) {
+            // Update existing elements in-place without rebuilding DOM
+            symbols.forEach(s => {
+                // Update both instances (for seamless scrolling)
+                for (let i = 1; i <= 2; i++) {
+                    const priceEl = document.getElementById(`ticker-price-${s.symbol}-${i}`);
+                    const changeEl = document.getElementById(`ticker-change-${s.symbol}-${i}`);
+                    
+                    if (priceEl && changeEl) {
+                        // Update price
+                        const newPrice = s.bid.toFixed(s.digits || 5);
+                        const oldPrice = marketPrices[s.symbol] || s.bid;
+                        
+                        priceEl.textContent = newPrice;
+                        
+                        // Flash effect on price change
+                        if (s.bid > oldPrice * 1.000001) {
+                            priceEl.classList.remove('flash-down');
+                            priceEl.classList.add('flash-up');
+                            setTimeout(() => priceEl.classList.remove('flash-up'), 300);
+                        } else if (s.bid < oldPrice * 0.999999) {
+                            priceEl.classList.remove('flash-up');
+                            priceEl.classList.add('flash-down');
+                            setTimeout(() => priceEl.classList.remove('flash-down'), 300);
+                        }
+                        
+                        // Update daily change
+                        const dailyChange = s.daily_change || 0;
+                        const oldDailyChange = marketDailyChanges[s.symbol] || dailyChange;
+                        let dailyChangeClass = 'neutral';
+                        let dailyChangeIcon = '';
+                        
+                        if (dailyChange > 0.001) {
+                            dailyChangeClass = 'up';
+                            dailyChangeIcon = '<i class="fas fa-caret-up"></i>';
+                        } else if (dailyChange < -0.001) {
+                            dailyChangeClass = 'down';
+                            dailyChangeIcon = '<i class="fas fa-caret-down"></i>';
+                        }
+                        
+                        const dailyChangeText = dailyChange >= 0 ? '+' + dailyChange.toFixed(2) + '%' : dailyChange.toFixed(2) + '%';
+                        changeEl.className = 'market-ticker-change ' + dailyChangeClass;
+                        changeEl.innerHTML = dailyChangeIcon + ' ' + dailyChangeText;
+                        
+                        // Flash effect on daily change update
+                        if (dailyChange > oldDailyChange + 0.001) {
+                            changeEl.classList.add('flash-change-up');
+                            setTimeout(() => changeEl.classList.remove('flash-change-up'), 300);
+                        } else if (dailyChange < oldDailyChange - 0.001) {
+                            changeEl.classList.add('flash-change-down');
+                            setTimeout(() => changeEl.classList.remove('flash-change-down'), 300);
+                        }
+                    }
+                }
+            });
+            
+            // Update stored prices and daily changes
+            symbols.forEach(s => {
+                marketPrices[s.symbol] = s.bid;
+                marketDailyChanges[s.symbol] = s.daily_change || 0;
+            });
+        }
+        
+        function buildTickerHTML(symbols) {
+            let html = '';
+            for (let i = 1; i <= 2; i++) {
+                symbols.forEach(s => {
+                    const dailyChange = s.daily_change || 0;
+                    let dailyChangeClass = 'neutral';
+                    let dailyChangeIcon = '';
+                    
+                    if (dailyChange > 0.001) {
+                        dailyChangeClass = 'up';
+                        dailyChangeIcon = '<i class="fas fa-caret-up"></i>';
+                    } else if (dailyChange < -0.001) {
+                        dailyChangeClass = 'down';
+                        dailyChangeIcon = '<i class="fas fa-caret-down"></i>';
+                    }
+                    
+                    const dailyChangeText = dailyChange >= 0 ? '+' + dailyChange.toFixed(2) + '%' : dailyChange.toFixed(2) + '%';
+                    const formattedBid = s.bid.toFixed(s.digits || 5);
+                    
+                    // Store initial values
+                    marketPrices[s.symbol] = s.bid;
+                    marketDailyChanges[s.symbol] = dailyChange;
+                    
+                    html += `<div class="market-ticker-item">
+                        <span class="market-ticker-symbol">${s.symbol}</span>
+                        <span class="market-ticker-price" id="ticker-price-${s.symbol}-${i}">${formattedBid}</span>
+                        <span class="market-ticker-change ${dailyChangeClass}" id="ticker-change-${s.symbol}-${i}">${dailyChangeIcon} ${dailyChangeText}</span>
+                    </div>`;
+                    
+                    marketPrices[s.symbol] = s.bid;
+                });
+            }
+            return html;
+        }
+        
+        function symbolListChanged(newSymbols) {
+            if (currentSymbolList.length !== newSymbols.length) return true;
+            for (let i = 0; i < newSymbols.length; i++) {
+                if (currentSymbolList[i] !== newSymbols[i].symbol) return true;
+            }
+            return false;
+        }
+        
+        async function updateMarketTicker() {
+            const tickerEl = document.getElementById('marketTickerContent');
+            if (!tickerEl) return;
+            
+            try {
+                const resp = await fetch('/api/market-watch');
+                const data = await resp.json();
+                
+                if (!data.success) {
+                    if (!tickerInitialized || tickerEl.querySelector('.market-ticker-item') === null) {
+                        if (data.error && data.error.includes('No active pairs')) {
+                            tickerEl.innerHTML = `<span class="market-ticker-loading">
+                                <i class="fas fa-chart-line"></i> 
+                                Activate a trading pair to see live MT5 market data
+                                <span style="margin-left: 30px; opacity: 0.6;">•</span>
+                                <span style="margin-left: 30px; opacity: 0.8;"><i class="fas fa-play-circle" style="margin-right: 6px;"></i>Click "Activate" on any pair to start</span>
+                            </span>`;
+                        } else {
+                            tickerEl.innerHTML = `<span class="market-ticker-loading">
+                                <i class="fas fa-exclamation-triangle"></i> 
+                                ${data.error || 'Unable to fetch market data'}
+                            </span>`;
+                        }
+                    }
+                    tickerInitialized = false;
+                    currentSymbolList = [];
+                    return;
+                }
+                
+                const symbols = data.symbols || [];
+                
+                if (symbols.length === 0) {
+                    if (!tickerInitialized) {
+                        tickerEl.innerHTML = `<span class="market-ticker-loading">
+                            <i class="fas fa-broadcast-tower"></i> 
+                            Connected to MT5 (${data.master_account || 'Master'}) - No symbols in Market Watch
+                        </span>`;
+                    }
+                    return;
+                }
+                
+                // Check if we need to rebuild DOM or just update values
+                if (!tickerInitialized || symbolListChanged(symbols)) {
+                    // Rebuild entire ticker
+                    tickerEl.innerHTML = buildTickerHTML(symbols);
+                    currentSymbolList = symbols.map(s => s.symbol);
+                    tickerInitialized = true;
+                } else {
+                    // Just update values in-place (no flicker)
+                    updateTickerValues(symbols);
+                }
+                
+            } catch (e) {
+                console.log('Market ticker error:', e);
+            }
+        }
+        
+        // Update market ticker every 1 second for near real-time updates
+        updateMarketTicker();
+        setInterval(updateMarketTicker, 1000);
 
 
 

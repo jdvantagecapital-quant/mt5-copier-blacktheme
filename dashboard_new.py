@@ -195,11 +195,13 @@ def create_app(process_manager):
             if pair_id in status:
                 pair['status'] = {
                     'master_running': status[pair_id].get('master', False),
+                    'activated': status[pair_id].get('activated', False),
                     'children_running': status[pair_id].get('children', {})
                 }
             else:
                 pair['status'] = {
                     'master_running': False,
+                    'activated': False,
                     'children_running': {}
                 }
         
@@ -599,6 +601,45 @@ def create_app(process_manager):
             return jsonify({'success': False, 'error': 'Please stop the copier first'})
         success, message = pm.deactivate_pair(pair_id)
         return jsonify({'success': success, 'message': message})
+    
+    @app.route('/api/market-watch')
+    @login_required
+    def get_market_watch():
+        """Get Market Watch symbols from first active master account"""
+        from mt5_data_fetcher import get_market_watch
+        
+        pm = app.config['PROCESS_MANAGER']
+        status = pm.get_status()
+        config = load_config()
+        pairs = config.get('pairs', [])
+        
+        # Find first activated pair
+        for pair in pairs:
+            pair_id = pair.get('id')
+            if status.get(pair_id, {}).get('activated', False):
+                # Get master account details
+                master_account = pair.get('master_account')
+                master_server = pair.get('master_server')
+                master_password = pair.get('master_password')
+                master_terminal = pair.get('master_terminal', '').strip().strip('"\'')
+                
+                # Fetch market watch from this terminal
+                result = get_market_watch(
+                    login=master_account,
+                    server=master_server,
+                    password=master_password,
+                    terminal_path=master_terminal
+                )
+                
+                if result.get('success'):
+                    result['master_account'] = master_account
+                    return jsonify(result)
+        
+        return jsonify({
+            'success': False,
+            'error': 'No active pairs. Activate a pair to see market data.',
+            'symbols': []
+        })
     
     # API Routes - Activity Logs
     @app.route('/api/activity/<pair_id>')
